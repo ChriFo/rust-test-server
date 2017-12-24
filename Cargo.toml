@@ -10,3 +10,12 @@ publish = false
 futures = "0.1.14"
 hyper = "0.11.2"
 spmc = "0.2.2"
+
+[package.metadata.release]
+sign-commit = true
+disable-push = true
+upload-doc = false
+no-dev-version = true
+tag-message = "{{version}}"
+tag-prefix = "v"
+pre-release-commit-message = "{{version}}"
