@@ -1,11 +1,13 @@
 #![allow(dead_code)]
+extern crate futures;
+extern crate hyper;
 extern crate spmc;
-pub extern crate futures;
-pub extern crate hyper;
+pub extern crate http;
 
-use self::futures::Future;
+use self::futures::{Future, Stream};
 use self::futures::sync::oneshot;
-use self::hyper::server::{Http, NewService, Request, Response, Service};
+use self::http::Request;
+use self::hyper::server::{Http, NewService, Response, Service};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
@@ -25,11 +27,20 @@ impl Serve {
         &self.addr
     }
 
-    pub fn request(&self) -> Option<Request> {
-        match self.msg_rx.try_recv() {
-            Ok(Msg::Request(request)) => Some(request),
-            _ => None,
+    pub fn head(&self) -> Request<()> {
+        let mut request: Request<()> = http::Request::default();
+        while let Ok(Msg::Head(req)) = self.msg_rx.try_recv() {
+            request = req;
         }
+        request
+    }
+
+    pub fn body(&self) -> Vec<u8> {
+        let mut buf = vec![];
+        while let Ok(Msg::Chunk(msg)) = self.msg_rx.try_recv() {
+            buf.extend(&msg);
+        }
+        buf
     }
 
     pub fn reply(&self) -> ReplyBuilder {
@@ -81,12 +92,13 @@ enum Reply {
 }
 
 enum Msg {
-    Request(Request),
+    Head(Request<()>),
+    Chunk(Vec<u8>),
 }
 
 impl NewService for TestService {
-    type Request = Request;
-    type Response = Response;
+    type Request = hyper::Request;
+    type Response = hyper::Response;
     type Error = hyper::Error;
 
     type Instance = TestService;
@@ -97,32 +109,53 @@ impl NewService for TestService {
 }
 
 impl Service for TestService {
-    type Request = Request;
-    type Response = Response;
+    type Request = hyper::Request;
+    type Response = hyper::Response;
     type Error = hyper::Error;
     type Future = Box<Future<Item = Response, Error = hyper::Error>>;
-    fn call(&self, req: Request) -> Self::Future {
-        let tx = self.tx.clone();
+    fn call(&self, req: hyper::Request) -> Self::Future {
+        let tx_chunk = self.tx.clone();
+        let tx_head = self.tx.clone();
         let replies = self.reply.clone();
 
-        let _ = tx.lock().unwrap().send(Msg::Request(req));
+        let (method, uri, version, headers, body) = req.deconstruct();
 
-        let mut res = Response::new();
-        while let Ok(reply) = replies.try_recv() {
-            match reply {
-                Reply::Status(s) => {
-                    res.set_status(s);
-                }
-                Reply::Headers(headers) => {
-                    *res.headers_mut() = headers;
-                }
-                Reply::Body(body) => {
-                    res.set_body(body);
-                }
-            }
-        }
+        Box::new(
+            body.for_each(move |chunk| {
+                tx_chunk
+                    .lock()
+                    .unwrap()
+                    .send(Msg::Chunk(chunk.to_vec()))
+                    .unwrap();
+                Ok(())
+            }).and_then(move |_| {
+                    let mut request: Request<()> = http::Request::default();
+                    *request.headers_mut() = headers.into();
+                    *request.method_mut() = method.into();
+                    *request.uri_mut() = uri.into();
+                    *request.version_mut() = version.into();
 
-        Box::new(futures::future::ok(res))
+                    tx_head.lock().unwrap().send(Msg::Head(request)).unwrap();
+                    Ok(())
+                })
+                .map(move |_| {
+                    let mut res = Response::new();
+                    while let Ok(reply) = replies.try_recv() {
+                        match reply {
+                            Reply::Status(s) => {
+                                res.set_status(s);
+                            }
+                            Reply::Headers(headers) => {
+                                *res.headers_mut() = headers;
+                            }
+                            Reply::Body(body) => {
+                                res.set_body(body);
+                            }
+                        }
+                    }
+                    res
+                }),
+        )
     }
 }
 
@@ -134,7 +167,7 @@ pub fn serve(addr: Option<String>) -> Serve {
 
     let addr = match addr {
         Some(addr) => addr.parse().unwrap(),
-        None => "127.0.0.1:0".parse().unwrap()
+        None => "127.0.0.1:0".parse().unwrap(),
     };
 
     let thread = thread::Builder::new()
