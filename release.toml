@@ -1,0 +1,7 @@
+sign-commit = true
+disable-push = true
+upload-doc = false
+no-dev-version = true
+tag-message = "{{version}}"
+tag-prefix = "v"
+pre-release-commit-message = "{{version}}"
