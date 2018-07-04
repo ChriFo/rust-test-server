@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn start_server_at_given_port() {
-        let server = TestServer::new(65432, Box::new(TestHandler {}));
+        let server = TestServer::new(65432, Box::new(TestHandler));
 
         assert!(&server.url().contains(":65432"));
 
@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn validate_client_request() {
-        let server = TestServer::new(0, Box::new(TestHandler {}));
+        let server = TestServer::new(0, Box::new(TestHandler));
 
         let request_content = create_rand_string(100);
         let client = reqwest::Client::new();
