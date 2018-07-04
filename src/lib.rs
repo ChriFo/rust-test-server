@@ -95,6 +95,7 @@ mod tests {
     use self::rand::{distributions::Alphanumeric, Rng};
     use self::reqwest::StatusCode;
     use super::*;
+    use std::{fs::File, io::BufReader};
 
     #[test]
     fn start_server_at_given_port() {
@@ -123,6 +124,26 @@ mod tests {
         assert_eq!(request_content, last_request.body);
     }
 
+    #[test]
+    fn no_need_to_fetch_request_from_server() {
+        struct TestFileHandler;
+
+        impl Handler for TestFileHandler {
+            fn handle(&self, _: &mut Request) -> IronResult<Response> {
+                let bufreader = BufReader::new(File::open("tests/sample.json").unwrap());
+                Ok(Response::with((
+                    iron::status::Ok,
+                    iron::response::BodyReader(bufreader),
+                )))
+            }
+        }
+
+        let server = TestServer::new(0, Box::new(TestFileHandler));
+        let mut response = reqwest::get(&server.url()).unwrap();
+
+        assert_eq!(read_file("tests/sample.json"), response.text().unwrap());
+    }
+
     struct TestHandler;
 
     impl Handler for TestHandler {
@@ -137,4 +158,11 @@ mod tests {
             .take(size)
             .collect::<String>()
     }
+    
+    fn read_file(file: &str) -> String {
+        let mut file = File::open(file).unwrap();
+        let mut content = Vec::new();
+        file.read_to_end(&mut content).unwrap();
+        String::from_utf8(content).unwrap()
+    } 
 }
