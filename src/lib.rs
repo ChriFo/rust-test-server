@@ -9,6 +9,7 @@ use iron::{middleware::Handler, prelude::*, BeforeMiddleware, Headers, Listening
 use std::{io::Read, sync::mpsc::RecvError};
 use url::Url;
 
+#[derive(Debug)]
 pub struct LastRequest {
     body: String,
     headers: Headers,
