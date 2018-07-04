@@ -1,13 +1,15 @@
 #![allow(dead_code)]
 extern crate antidote;
+extern crate crossbeam_channel as channel;
 pub extern crate iron;
+extern crate url;
 
 use antidote::Mutex;
 use iron::{middleware::Handler, prelude::*, BeforeMiddleware, Headers, Listening};
-use std::{
-    io::Read, sync::mpsc::{self, *},
-};
+use std::{io::Read, sync::mpsc::RecvError};
+use url::Url;
 
+#[derive(Debug)]
 pub struct LastRequest {
     body: String,
     headers: Headers,
@@ -16,7 +18,7 @@ pub struct LastRequest {
 }
 
 struct SendRequest {
-    tx: Mutex<Sender<LastRequest>>,
+    tx: Mutex<channel::Sender<LastRequest>>,
 }
 
 impl BeforeMiddleware for SendRequest {
@@ -27,17 +29,16 @@ impl BeforeMiddleware for SendRequest {
             .read_to_string(&mut body)
             .expect("Failed to read request body");
 
+        let url: Url = request.url.clone().into();
+
         let last_request = LastRequest {
             body,
             headers: request.headers.clone(),
             method: request.method.clone().as_ref().to_string(),
-            path: request.url.path().into_iter().collect(),
+            path: url.as_str().to_string(),
         };
 
-        self.tx
-            .lock()
-            .send(last_request)
-            .expect("Failed to send LastRequest");
+        self.tx.lock().send(last_request);
 
         Ok(())
     }
@@ -45,12 +46,12 @@ impl BeforeMiddleware for SendRequest {
 
 pub struct TestServer {
     instance: Listening,
-    rx: Receiver<LastRequest>,
+    rx: channel::Receiver<LastRequest>,
 }
 
 impl TestServer {
     pub fn new(port: u16, handler: Box<Handler>) -> Self {
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = channel::bounded(1);
 
         let mut chain = Chain::new(handler);
         chain.link_before(SendRequest { tx: Mutex::new(tx) });
@@ -63,8 +64,11 @@ impl TestServer {
         }
     }
 
-    pub fn last_request(&self) -> Result<LastRequest, TryRecvError> {
-        self.rx.try_recv()
+    pub fn last_request(&self) -> Result<LastRequest, RecvError> {
+        match self.rx.recv() {
+            None => Err(RecvError),
+            Some(request) => Ok(request),
+        }
     }
 
     pub fn url(&self) -> String {
@@ -91,10 +95,11 @@ mod tests {
     use self::rand::{distributions::Alphanumeric, Rng};
     use self::reqwest::StatusCode;
     use super::*;
+    use std::{fs::File, io::BufReader};
 
     #[test]
     fn start_server_at_given_port() {
-        let server = TestServer::new(65432, Box::new(TestHandler {}));
+        let server = TestServer::new(65432, Box::new(TestHandler));
 
         assert!(&server.url().contains(":65432"));
 
@@ -105,7 +110,7 @@ mod tests {
 
     #[test]
     fn validate_client_request() {
-        let server = TestServer::new(0, Box::new(TestHandler {}));
+        let server = TestServer::new(0, Box::new(TestHandler));
 
         let request_content = create_rand_string(100);
         let client = reqwest::Client::new();
@@ -117,6 +122,26 @@ mod tests {
         let last_request = server.last_request().unwrap();
 
         assert_eq!(request_content, last_request.body);
+    }
+
+    #[test]
+    fn no_need_to_fetch_request_from_server() {
+        struct TestFileHandler;
+
+        impl Handler for TestFileHandler {
+            fn handle(&self, _: &mut Request) -> IronResult<Response> {
+                let bufreader = BufReader::new(File::open("tests/sample.json").unwrap());
+                Ok(Response::with((
+                    iron::status::Ok,
+                    iron::response::BodyReader(bufreader),
+                )))
+            }
+        }
+
+        let server = TestServer::new(0, Box::new(TestFileHandler));
+        let mut response = reqwest::get(&server.url()).unwrap();
+
+        assert_eq!(read_file("tests/sample.json"), response.text().unwrap());
     }
 
     struct TestHandler;
@@ -133,4 +158,11 @@ mod tests {
             .take(size)
             .collect::<String>()
     }
+    
+    fn read_file(file: &str) -> String {
+        let mut file = File::open(file).unwrap();
+        let mut content = Vec::new();
+        file.read_to_end(&mut content).unwrap();
+        String::from_utf8(content).unwrap()
+    } 
 }
