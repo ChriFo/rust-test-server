@@ -2,10 +2,12 @@
 extern crate antidote;
 extern crate crossbeam_channel as channel;
 pub extern crate iron;
+extern crate url;
 
 use antidote::Mutex;
 use iron::{middleware::Handler, prelude::*, BeforeMiddleware, Headers, Listening};
 use std::{io::Read, sync::mpsc::RecvError};
+use url::Url;
 
 pub struct LastRequest {
     body: String,
@@ -26,11 +28,13 @@ impl BeforeMiddleware for SendRequest {
             .read_to_string(&mut body)
             .expect("Failed to read request body");
 
+        let url: Url = request.url.clone().into();
+
         let last_request = LastRequest {
             body,
             headers: request.headers.clone(),
             method: request.method.clone().as_ref().to_string(),
-            path: request.url.path().into_iter().collect(),
+            path: url.as_str().to_string(),
         };
 
         self.tx.lock().send(last_request);

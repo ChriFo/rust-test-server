@@ -10,6 +10,7 @@ publish = false
 antidote = "*"
 crossbeam-channel = "*"
 iron = "*"
+url = "*"
 
 [dev-dependencies]
 rand = "*"
