@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 antidote = "*"
+crossbeam-channel = "*"
 iron = "*"
 
 [dev-dependencies]

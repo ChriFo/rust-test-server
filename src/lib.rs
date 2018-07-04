@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 extern crate antidote;
+extern crate crossbeam_channel as channel;
 pub extern crate iron;
 
 use antidote::Mutex;
 use iron::{middleware::Handler, prelude::*, BeforeMiddleware, Headers, Listening};
-use std::{
-    io::Read, sync::mpsc::{self, *},
-};
+use std::{io::Read, sync::mpsc::RecvError};
 
 pub struct LastRequest {
     body: String,
@@ -16,7 +15,7 @@ pub struct LastRequest {
 }
 
 struct SendRequest {
-    tx: Mutex<Sender<LastRequest>>,
+    tx: Mutex<channel::Sender<LastRequest>>,
 }
 
 impl BeforeMiddleware for SendRequest {
@@ -34,10 +33,7 @@ impl BeforeMiddleware for SendRequest {
             path: request.url.path().into_iter().collect(),
         };
 
-        self.tx
-            .lock()
-            .send(last_request)
-            .expect("Failed to send LastRequest");
+        self.tx.lock().send(last_request);
 
         Ok(())
     }
@@ -45,12 +41,12 @@ impl BeforeMiddleware for SendRequest {
 
 pub struct TestServer {
     instance: Listening,
-    rx: Receiver<LastRequest>,
+    rx: channel::Receiver<LastRequest>,
 }
 
 impl TestServer {
     pub fn new(port: u16, handler: Box<Handler>) -> Self {
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = channel::bounded(1);
 
         let mut chain = Chain::new(handler);
         chain.link_before(SendRequest { tx: Mutex::new(tx) });
@@ -63,8 +59,11 @@ impl TestServer {
         }
     }
 
-    pub fn last_request(&self) -> Result<LastRequest, TryRecvError> {
-        self.rx.try_recv()
+    pub fn last_request(&self) -> Result<LastRequest, RecvError> {
+        match self.rx.recv() {
+            None => Err(RecvError),
+            Some(request) => Ok(request),
+        }
     }
 
     pub fn url(&self) -> String {
