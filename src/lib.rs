@@ -1,88 +1,126 @@
 #![allow(dead_code)]
-extern crate antidote;
+extern crate actix;
+pub extern crate actix_web;
 extern crate crossbeam_channel as channel;
-pub extern crate iron;
-extern crate url;
+extern crate futures;
 
-use antidote::Mutex;
-use iron::{middleware::Handler, prelude::*, BeforeMiddleware, Headers, Listening};
-use std::{io::Read, sync::mpsc::RecvError};
-use url::Url;
+use actix::prelude::{Addr, Syn, System};
+use actix_web::middleware::{Middleware, Started};
+use actix_web::server::{self, HttpHandler, HttpServer};
+use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, Result};
+use futures::Future;
+use std::collections::HashMap;
+use std::io::Read;
+use std::net::SocketAddr;
+use std::thread;
 
 #[derive(Debug)]
-pub struct LastRequest {
+pub struct SendedRequest {
     body: String,
-    headers: Headers,
+    headers: HashMap<String, String>,
     method: String,
     path: String,
 }
 
-struct SendRequest {
-    tx: Mutex<channel::Sender<LastRequest>>,
+impl<S> From<HttpRequest<S>> for SendedRequest {
+    fn from(req: HttpRequest<S>) -> Self {
+        let mut request = req.clone();
+
+        // https://github.com/actix/actix-web/issues/373
+        let mut body = String::new();
+        let _ = request.read_to_string(&mut body);
+
+        let headers = request
+            .headers()
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.as_str().to_string(),
+                    v.to_str()
+                        .expect("Failed to convert header value")
+                        .to_string(),
+                )
+            })
+            .collect::<HashMap<_, _>>();
+
+        let method = request.method().to_string();
+        let path = request.path().to_string();
+
+        SendedRequest {
+            body,
+            headers,
+            method,
+            path,
+        }
+    }
 }
 
-impl BeforeMiddleware for SendRequest {
-    fn before(&self, request: &mut Request) -> IronResult<()> {
-        let mut body = String::new();
-        request
-            .body
-            .read_to_string(&mut body)
-            .expect("Failed to read request body");
+struct SendRequest {
+    tx: channel::Sender<SendedRequest>,
+}
 
-        let url: Url = request.url.clone().into();
+impl<S: 'static> Middleware<S> for SendRequest {
+    fn start(&self, req: &mut HttpRequest<S>) -> Result<Started> {
+        let request: SendedRequest = req.clone().into();
 
-        let last_request = LastRequest {
-            body,
-            headers: request.headers.clone(),
-            method: request.method.clone().as_ref().to_string(),
-            path: url.as_str().to_string(),
-        };
+        self.tx.send(request);
 
-        self.tx.lock().send(last_request);
-
-        Ok(())
+        Ok(Started::Done)
     }
 }
 
 pub struct TestServer {
-    instance: Listening,
-    rx: channel::Receiver<LastRequest>,
+    addr: Addr<Syn, HttpServer<Box<HttpHandler>>>,
+    rx_req: channel::Receiver<SendedRequest>,
+    socket: SocketAddr,
 }
 
 impl TestServer {
-    pub fn new(port: u16, handler: Box<Handler>) -> Self {
-        let (tx, rx) = channel::bounded(1);
+    pub fn new(port: u16, func: fn(HttpRequest) -> HttpResponse) -> Self {
+        let (tx, rx) = channel::unbounded();
+        let (tx_req, rx_req) = channel::unbounded();
 
-        let mut chain = Chain::new(handler);
-        chain.link_before(SendRequest { tx: Mutex::new(tx) });
+        let _ = thread::spawn(move || {
+            let sys = System::new("test-server");
+            let server = server::new(move || {
+                vec![
+                    App::new()
+                        .middleware(SendRequest { tx: tx_req.clone() })
+                        .default_resource(move |r| r.f(func))
+                        .boxed(),
+                ]
+            }).bind(SocketAddr::from(([127, 0, 0, 1], port)))
+                .expect("Failed to bind");
 
-        TestServer {
-            instance: Iron::new(chain)
-                .http(("127.0.0.1", port))
-                .expect("Unable to start server"),
-            rx,
+            let socket = server.addrs()[0];
+            let addr = server.shutdown_timeout(0).start();
+            let _ = tx.clone().send((addr, socket));
+            let _ = sys.run();
+        });
+
+        let (addr, socket) = rx.recv().expect("Failed to receive instance addr");
+
+        Self {
+            addr,
+            rx_req,
+            socket,
         }
     }
 
-    pub fn last_request(&self) -> Result<LastRequest, RecvError> {
-        match self.rx.recv() {
-            None => Err(RecvError),
-            Some(request) => Ok(request),
-        }
+    pub fn received_request(&self) -> Option<SendedRequest> {
+        self.rx_req.try_recv()
     }
 
     pub fn url(&self) -> String {
-        format!(
-            "http://{}:{}",
-            self.instance.socket.ip(),
-            self.instance.socket.port()
-        )
+        format!("http://{}:{}", self.socket.ip(), self.socket.port())
     }
 }
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        self.instance.close().expect("Error closing server");
+        let _ = self.addr
+            .send(server::StopServer { graceful: false })
+            .wait();
     }
 }
 
@@ -94,12 +132,13 @@ mod tests {
 
     use self::rand::{distributions::Alphanumeric, Rng};
     use self::reqwest::StatusCode;
-    use super::*;
-    use std::{fs::File, io::BufReader};
+    use super::actix_web::HttpResponse;
+    use super::{SendedRequest, TestServer};
+    use std::{fs::File, io::Read};
 
     #[test]
     fn start_server_at_given_port() {
-        let server = TestServer::new(65432, Box::new(TestHandler));
+        let server = TestServer::new(65432, |_| HttpResponse::Ok().into());
 
         assert!(&server.url().contains(":65432"));
 
@@ -110,7 +149,7 @@ mod tests {
 
     #[test]
     fn validate_client_request() {
-        let server = TestServer::new(0, Box::new(TestHandler));
+        let server = TestServer::new(0, |_| HttpResponse::Ok().into());
 
         let request_content = create_rand_string(100);
         let client = reqwest::Client::new();
@@ -119,37 +158,32 @@ mod tests {
             .body(request_content.clone())
             .send();
 
-        let last_request = server.last_request().unwrap();
+        let request = server.received_request();
+        assert!(request.is_some());
 
-        assert_eq!(request_content, last_request.body);
+        #[allow(unused_variables)]
+        let SendedRequest {
+            body, // https://github.com/actix/actix-web/issues/373
+            headers,
+            method,
+            path,
+        } = request.unwrap();
+
+        //assert_eq!(request_content, body);
+        assert_eq!(Some(&String::from("100")), headers.get("content-length"));
+        assert_eq!("POST", method);
+        assert_eq!("/", path);
     }
 
     #[test]
-    fn no_need_to_fetch_request_from_server() {
-        struct TestFileHandler;
-
-        impl Handler for TestFileHandler {
-            fn handle(&self, _: &mut Request) -> IronResult<Response> {
-                let bufreader = BufReader::new(File::open("tests/sample.json").unwrap());
-                Ok(Response::with((
-                    iron::status::Ok,
-                    iron::response::BodyReader(bufreader),
-                )))
-            }
-        }
-
-        let server = TestServer::new(0, Box::new(TestFileHandler));
+    fn not_necessary_to_fetch_request_from_server() {
+        let server = TestServer::new(0, |_| {
+            let content = read_file("tests/sample.json");
+            HttpResponse::Ok().body(content).into()
+        });
         let mut response = reqwest::get(&server.url()).unwrap();
 
         assert_eq!(read_file("tests/sample.json"), response.text().unwrap());
-    }
-
-    struct TestHandler;
-
-    impl Handler for TestHandler {
-        fn handle(&self, _: &mut Request) -> IronResult<Response> {
-            Ok(Response::with((iron::status::Ok, "ok")))
-        }
     }
 
     fn create_rand_string(size: usize) -> String {
@@ -158,11 +192,11 @@ mod tests {
             .take(size)
             .collect::<String>()
     }
-    
+
     fn read_file(file: &str) -> String {
         let mut file = File::open(file).unwrap();
-        let mut content = Vec::new();
-        file.read_to_end(&mut content).unwrap();
-        String::from_utf8(content).unwrap()
-    } 
+        let mut content = String::new();
+        let _ = file.read_to_string(&mut content);
+        content
+    }
 }
