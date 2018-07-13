@@ -16,10 +16,10 @@ use std::thread;
 
 #[derive(Debug)]
 pub struct SendedRequest {
-    body: String,
-    headers: HashMap<String, String>,
-    method: String,
-    path: String,
+    pub body: String,
+    pub headers: HashMap<String, String>,
+    pub method: String,
+    pub path: String,
 }
 
 impl<S> From<HttpRequest<S>> for SendedRequest {
