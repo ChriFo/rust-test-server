@@ -17,18 +17,18 @@ use std::net::SocketAddr;
 use std::thread;
 
 #[derive(Debug)]
-pub struct SendedRequest {
+pub struct Request {
     pub body: String,
     pub headers: HashMap<String, String>,
     pub method: String,
     pub path: String,
 }
 
-impl<S> From<HttpRequest<S>> for SendedRequest {
+impl<S> From<HttpRequest<S>> for Request {
     fn from(req: HttpRequest<S>) -> Self {
         let mut request = req.clone();
 
-        // https://github.com/actix/actix-web/issues/373
+        // actix/actix-web#373
         let mut body = String::new();
         let _ = request.read_to_string(&mut body);
 
@@ -48,7 +48,7 @@ impl<S> From<HttpRequest<S>> for SendedRequest {
         let method = request.method().to_string();
         let path = request.path().to_string();
 
-        SendedRequest {
+        Request {
             body,
             headers,
             method,
@@ -58,12 +58,12 @@ impl<S> From<HttpRequest<S>> for SendedRequest {
 }
 
 struct SendRequest {
-    tx: channel::Sender<SendedRequest>,
+    tx: channel::Sender<Request>,
 }
 
 impl<S: 'static> Middleware<S> for SendRequest {
     fn start(&self, req: &mut HttpRequest<S>) -> Result<Started> {
-        let request: SendedRequest = req.clone().into();
+        let request: Request = req.clone().into();
 
         self.tx.send(request);
 
@@ -73,7 +73,7 @@ impl<S: 'static> Middleware<S> for SendRequest {
 
 pub struct TestServer {
     addr: Addr<Syn, HttpServer<Box<HttpHandler>>>,
-    rx_req: channel::Receiver<SendedRequest>,
+    request: channel::Receiver<Request>,
     socket: SocketAddr,
 }
 
@@ -104,13 +104,14 @@ impl TestServer {
 
         Self {
             addr,
-            rx_req,
+            request: rx_req,
             socket,
         }
     }
 
-    pub fn received_request(&self) -> Option<SendedRequest> {
-        self.rx_req.try_recv()
+    pub fn received_request(&self) -> Option<Request> {
+        self.request.try_recv()
+    }
     }
 
     pub fn url(&self) -> String {
@@ -163,8 +164,8 @@ mod tests {
         assert!(request.is_some());
 
         #[allow(unused_variables)]
-        let SendedRequest {
-            body, // https://github.com/actix/actix-web/issues/373
+        let Request {
+            body, // actix/actix-web#373
             headers,
             method,
             path,
