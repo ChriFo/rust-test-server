@@ -112,6 +112,9 @@ impl TestServer {
     pub fn received_request(&self) -> Option<Request> {
         self.request.try_recv()
     }
+
+    pub fn stop(&self) {
+        let _ = self.addr.send(server::StopServer { graceful: true }).wait();
     }
 
     pub fn url(&self) -> String {
@@ -121,9 +124,7 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        let _ = self.addr
-            .send(server::StopServer { graceful: false })
-            .wait();
+        self.stop()
     }
 }
 
@@ -147,6 +148,21 @@ mod tests {
         let response = reqwest::get(&server.url()).unwrap();
 
         assert_eq!(StatusCode::Ok, response.status());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))] // carllerche/mio#776
+    fn restart_server_at_same_port() {
+        let mut server = TestServer::new(65433, |_| HttpResponse::Ok().into());
+        let response = reqwest::get(&server.url()).unwrap();
+
+        assert_eq!(StatusCode::Ok, response.status());
+
+        server.stop();
+        server = TestServer::new(65433, |_| HttpResponse::BadRequest().into());
+        let response = reqwest::get(&server.url()).unwrap();
+
+        assert_eq!(StatusCode::BadRequest, response.status());
     }
 
     #[test]
