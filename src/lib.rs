@@ -1,13 +1,15 @@
 #![allow(dead_code)]
 extern crate actix;
-pub extern crate actix_web;
+extern crate actix_web;
 extern crate crossbeam_channel as channel;
 extern crate futures;
 
 use actix::prelude::{Addr, Syn, System};
 use actix_web::middleware::{Middleware, Started};
 use actix_web::server::{self, HttpHandler, HttpServer};
-use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, Result};
+pub use actix_web::HttpRequest;
+pub use actix_web::HttpResponse;
+use actix_web::{App, HttpMessage, Result};
 use futures::Future;
 use std::collections::HashMap;
 use std::io::Read;
@@ -132,8 +134,7 @@ mod tests {
 
     use self::rand::{distributions::Alphanumeric, Rng};
     use self::reqwest::StatusCode;
-    use super::actix_web::HttpResponse;
-    use super::{SendedRequest, TestServer};
+    use super::{HttpResponse, Request, TestServer};
     use std::{fs::File, io::Read};
 
     #[test]
