@@ -1,13 +1,15 @@
 #![allow(dead_code)]
 extern crate actix;
-pub extern crate actix_web;
+extern crate actix_web;
 extern crate crossbeam_channel as channel;
 extern crate futures;
 
 use actix::prelude::{Addr, Syn, System};
 use actix_web::middleware::{Middleware, Started};
 use actix_web::server::{self, HttpHandler, HttpServer};
-use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, Result};
+pub use actix_web::HttpRequest;
+pub use actix_web::HttpResponse;
+use actix_web::{App, HttpMessage, Result};
 use futures::Future;
 use std::collections::HashMap;
 use std::io::Read;
@@ -15,18 +17,18 @@ use std::net::SocketAddr;
 use std::thread;
 
 #[derive(Debug)]
-pub struct SendedRequest {
+pub struct Request {
     pub body: String,
     pub headers: HashMap<String, String>,
     pub method: String,
     pub path: String,
 }
 
-impl<S> From<HttpRequest<S>> for SendedRequest {
+impl<S> From<HttpRequest<S>> for Request {
     fn from(req: HttpRequest<S>) -> Self {
         let mut request = req.clone();
 
-        // https://github.com/actix/actix-web/issues/373
+        // actix/actix-web#373
         let mut body = String::new();
         let _ = request.read_to_string(&mut body);
 
@@ -46,7 +48,7 @@ impl<S> From<HttpRequest<S>> for SendedRequest {
         let method = request.method().to_string();
         let path = request.path().to_string();
 
-        SendedRequest {
+        Request {
             body,
             headers,
             method,
@@ -56,12 +58,12 @@ impl<S> From<HttpRequest<S>> for SendedRequest {
 }
 
 struct SendRequest {
-    tx: channel::Sender<SendedRequest>,
+    tx: channel::Sender<Request>,
 }
 
 impl<S: 'static> Middleware<S> for SendRequest {
     fn start(&self, req: &mut HttpRequest<S>) -> Result<Started> {
-        let request: SendedRequest = req.clone().into();
+        let request: Request = req.clone().into();
 
         self.tx.send(request);
 
@@ -71,7 +73,7 @@ impl<S: 'static> Middleware<S> for SendRequest {
 
 pub struct TestServer {
     addr: Addr<Syn, HttpServer<Box<HttpHandler>>>,
-    rx_req: channel::Receiver<SendedRequest>,
+    request: channel::Receiver<Request>,
     socket: SocketAddr,
 }
 
@@ -102,13 +104,17 @@ impl TestServer {
 
         Self {
             addr,
-            rx_req,
+            request: rx_req,
             socket,
         }
     }
 
-    pub fn received_request(&self) -> Option<SendedRequest> {
-        self.rx_req.try_recv()
+    pub fn received_request(&self) -> Option<Request> {
+        self.request.try_recv()
+    }
+
+    pub fn stop(&self) {
+        let _ = self.addr.send(server::StopServer { graceful: true }).wait();
     }
 
     pub fn url(&self) -> String {
@@ -118,9 +124,7 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        let _ = self.addr
-            .send(server::StopServer { graceful: false })
-            .wait();
+        self.stop()
     }
 }
 
@@ -132,8 +136,7 @@ mod tests {
 
     use self::rand::{distributions::Alphanumeric, Rng};
     use self::reqwest::StatusCode;
-    use super::actix_web::HttpResponse;
-    use super::{SendedRequest, TestServer};
+    use super::{HttpResponse, Request, TestServer};
     use std::{fs::File, io::Read};
 
     #[test]
@@ -145,6 +148,21 @@ mod tests {
         let response = reqwest::get(&server.url()).unwrap();
 
         assert_eq!(StatusCode::Ok, response.status());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))] // carllerche/mio#776
+    fn restart_server_at_same_port() {
+        let mut server = TestServer::new(65433, |_| HttpResponse::Ok().into());
+        let response = reqwest::get(&server.url()).unwrap();
+
+        assert_eq!(StatusCode::Ok, response.status());
+
+        server.stop();
+        server = TestServer::new(65433, |_| HttpResponse::BadRequest().into());
+        let response = reqwest::get(&server.url()).unwrap();
+
+        assert_eq!(StatusCode::BadRequest, response.status());
     }
 
     #[test]
@@ -162,8 +180,8 @@ mod tests {
         assert!(request.is_some());
 
         #[allow(unused_variables)]
-        let SendedRequest {
-            body, // https://github.com/actix/actix-web/issues/373
+        let Request {
+            body, // actix/actix-web#373
             headers,
             method,
             path,
