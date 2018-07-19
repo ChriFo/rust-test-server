@@ -1,8 +1,11 @@
-#![allow(dead_code)]
 extern crate actix;
 extern crate actix_web;
+extern crate antidote;
 extern crate crossbeam_channel as channel;
 extern crate futures;
+#[macro_use]
+extern crate lazy_static;
+extern crate rand;
 
 use actix::prelude::{Addr, Syn, System};
 use actix_web::middleware::{Middleware, Started};
@@ -10,11 +13,16 @@ use actix_web::server::{self, HttpHandler, HttpServer};
 pub use actix_web::HttpRequest;
 pub use actix_web::HttpResponse;
 use actix_web::{App, HttpMessage, Result};
-use futures::Future;
+use antidote::Mutex;
+use futures::{future, Future, Stream};
+use rand::prelude::random;
 use std::collections::HashMap;
-use std::io::Read;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::thread;
+
+lazy_static! {
+    static ref MAP: Mutex<HashMap<u8, Request>> = Mutex::new(HashMap::new());
+}
 
 #[derive(Debug)]
 pub struct Request {
@@ -24,16 +32,16 @@ pub struct Request {
     pub path: String,
 }
 
-impl<S> From<HttpRequest<S>> for Request {
-    fn from(req: HttpRequest<S>) -> Self {
-        let mut request = req.clone();
+struct SendRequest {
+    tx: channel::Sender<u8>,
+}
 
-        // actix/actix-web#373
-        let mut body = String::new();
-        let _ = request.read_to_string(&mut body);
+impl<S: 'static> Middleware<S> for SendRequest {
+    fn start(&self, req: &mut HttpRequest<S>) -> Result<Started> {
+        let id: u8 = random();
+        self.tx.send(id);
 
-        let headers = request
-            .headers()
+        let headers = req.headers()
             .iter()
             .map(|(k, v)| {
                 (
@@ -45,36 +53,30 @@ impl<S> From<HttpRequest<S>> for Request {
             })
             .collect::<HashMap<_, _>>();
 
-        let method = request.method().to_string();
-        let path = request.path().to_string();
+        let method = req.method().to_string();
+        let path = req.path().to_string();
 
-        Request {
-            body,
-            headers,
-            method,
-            path,
-        }
-    }
-}
+        let fut = req.clone().concat2().from_err().and_then(move |body| {
+            MAP.lock().insert(
+                id,
+                Request {
+                    body: String::from_utf8(body.to_vec()).expect("Failed to extract request body"),
+                    headers,
+                    method,
+                    path,
+                },
+            );
+            future::ok(None)
+        });
 
-struct SendRequest {
-    tx: channel::Sender<Request>,
-}
-
-impl<S: 'static> Middleware<S> for SendRequest {
-    fn start(&self, req: &mut HttpRequest<S>) -> Result<Started> {
-        let request: Request = req.clone().into();
-
-        self.tx.send(request);
-
-        Ok(Started::Done)
+        Ok(Started::Future(Box::new(fut)))
     }
 }
 
 pub struct TestServer {
     addr: Addr<Syn, HttpServer<Box<HttpHandler>>>,
-    request: channel::Receiver<Request>,
-    socket: SocketAddr,
+    request: channel::Receiver<u8>,
+    socket: (IpAddr, u16),
 }
 
 impl TestServer {
@@ -94,23 +96,27 @@ impl TestServer {
             }).bind(SocketAddr::from(([127, 0, 0, 1], port)))
                 .expect("Failed to bind");
 
-            let socket = server.addrs()[0];
+            let sockets = server.addrs();
             let addr = server.shutdown_timeout(0).start();
-            let _ = tx.clone().send((addr, socket));
+            tx.clone().send((addr, sockets));
             let _ = sys.run();
         });
 
-        let (addr, socket) = rx.recv().expect("Failed to receive instance addr");
+        let (addr, sockets) = rx.recv().expect("Failed to receive instance addr");
+        let socket = sockets.get(0).expect("Failed to get bound socket");
 
         Self {
             addr,
             request: rx_req,
-            socket,
+            socket: (socket.ip(), socket.port()),
         }
     }
 
     pub fn received_request(&self) -> Option<Request> {
-        self.request.try_recv()
+        match self.request.try_recv() {
+            Some(id) => MAP.lock().remove(&id),
+            None => None,
+        }
     }
 
     pub fn stop(&self) {
@@ -118,7 +124,7 @@ impl TestServer {
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}:{}", self.socket.ip(), self.socket.port())
+        format!("http://{}:{}", self.socket.0, self.socket.1)
     }
 }
 
@@ -181,13 +187,13 @@ mod tests {
 
         #[allow(unused_variables)]
         let Request {
-            body, // actix/actix-web#373
+            body,
             headers,
             method,
             path,
         } = request.unwrap();
 
-        //assert_eq!(request_content, body);
+        assert_eq!(request_content, body);
         assert_eq!(Some(&String::from("100")), headers.get("content-length"));
         assert_eq!("POST", method);
         assert_eq!("/", path);
