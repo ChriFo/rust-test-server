@@ -1,20 +1,25 @@
 extern crate actix;
 extern crate actix_web;
 extern crate antidote;
+extern crate bytes;
 extern crate crossbeam_channel as channel;
 extern crate futures;
 #[macro_use]
 extern crate lazy_static;
 extern crate rand;
+#[cfg(test)]
+extern crate reqwest;
 
-use actix::prelude::{Addr, Syn, System};
-use actix_web::middleware::{Middleware, Started};
-use actix_web::server::{self, HttpHandler, HttpServer};
+use actix::prelude::{Addr, System};
 pub use actix_web::HttpRequest;
 pub use actix_web::HttpResponse;
-use actix_web::{App, HttpMessage, Result};
+use actix_web::{
+    middleware::{Middleware, Started}, server::{self, HttpHandler, HttpHandlerTask, HttpServer},
+    App, HttpMessage, Result,
+};
 use antidote::Mutex;
-use futures::{future, Future, Stream};
+use bytes::BytesMut;
+use futures::{Future, Stream};
 use rand::prelude::random;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
@@ -37,7 +42,7 @@ struct SendRequest {
 }
 
 impl<S: 'static> Middleware<S> for SendRequest {
-    fn start(&self, req: &mut HttpRequest<S>) -> Result<Started> {
+    fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
         let id: u8 = random();
         self.tx.send(id);
 
@@ -56,31 +61,44 @@ impl<S: 'static> Middleware<S> for SendRequest {
         let method = req.method().to_string();
         let path = req.path().to_string();
 
-        let fut = req.clone().concat2().from_err().and_then(move |body| {
-            MAP.lock().insert(
-                id,
-                Request {
-                    body: String::from_utf8(body.to_vec()).expect("Failed to extract request body"),
-                    headers,
-                    method,
-                    path,
+        let fut = req.clone()
+            .payload()
+            .from_err()
+            .fold(
+                BytesMut::new(),
+                move |mut body, chunk| -> Result<_, actix_web::Error> {
+                    body.extend_from_slice(&chunk);
+                    Ok(body)
                 },
-            );
-            future::ok(None)
-        });
+            )
+            .and_then(move |body| {
+                MAP.lock().insert(
+                    id,
+                    Request {
+                        body: String::from_utf8(body.to_vec())
+                            .expect("Failed to extract request body"),
+                        headers,
+                        method,
+                        path,
+                    },
+                );
+                Ok(None)
+            });
 
         Ok(Started::Future(Box::new(fut)))
     }
 }
 
+type ServerAddrType = Addr<HttpServer<Box<HttpHandler<Task = Box<HttpHandlerTask>>>>>;
+
 pub struct TestServer {
-    addr: Addr<Syn, HttpServer<Box<HttpHandler>>>,
+    addr: ServerAddrType,
     request: channel::Receiver<u8>,
     socket: (IpAddr, u16),
 }
 
 impl TestServer {
-    pub fn new(port: u16, func: fn(HttpRequest) -> HttpResponse) -> Self {
+    pub fn new(port: u16, func: for<'r> fn(&'r HttpRequest) -> HttpResponse) -> Self {
         let (tx, rx) = channel::unbounded();
         let (tx_req, rx_req) = channel::unbounded();
 
@@ -137,12 +155,9 @@ impl Drop for TestServer {
 #[cfg(test)]
 mod tests {
 
-    extern crate rand;
-    extern crate reqwest;
-
-    use self::rand::{distributions::Alphanumeric, Rng};
-    use self::reqwest::StatusCode;
     use super::{HttpResponse, Request, TestServer};
+    use rand::{self, distributions::Alphanumeric, Rng};
+    use reqwest::{self, StatusCode};
     use std::{fs::File, io::Read};
 
     #[test]
@@ -185,7 +200,6 @@ mod tests {
         let request = server.received_request();
         assert!(request.is_some());
 
-        #[allow(unused_variables)]
         let Request {
             body,
             headers,
@@ -208,6 +222,19 @@ mod tests {
         let mut response = reqwest::get(&server.url()).unwrap();
 
         assert_eq!(read_file("tests/sample.json"), response.text().unwrap());
+    }
+
+    #[test]
+    fn fetch_2nd_request_from_server() {
+        let server = TestServer::new(0, |_| HttpResponse::Ok().into());
+
+        let _ = reqwest::get(&server.url()).unwrap();
+        let _ = reqwest::Client::new().post(&server.url()).body("2").send();
+
+        let _ = server.received_request().unwrap();
+        let request = server.received_request().unwrap();
+
+        assert_eq!("2", request.body);
     }
 
     fn create_rand_string(size: usize) -> String {
