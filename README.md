@@ -31,13 +31,13 @@ fn example_test() {
     // request against server
     let _ = client::get(&server.url());
 
-    // get received request from server
-    let request = server.received_request().unwrap();
+    // get received request as vector from server
+    let last_request = server.requests()[0];
 
-    assert_eq!("GET", request.method);
-    assert_eq!("/", request.path);
+    assert_eq!("GET", last_request.method);
+    assert_eq!("/", last_request.path);
     // body and headers are also available
 }
 ```
 
-For more examples have a look at the [tests](https://github.com/ChriFo/test-server-rs/blob/master/src/lib.rs#L139).
+For more examples have a look at the [tests](https://github.com/ChriFo/test-server-rs/blob/master/tests/server.rs).
