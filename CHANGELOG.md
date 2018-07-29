@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 * remove TestServer::received_request()
 * add TestServer::requests() returning all requests in vector
 
