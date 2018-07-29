@@ -1,9 +1,10 @@
-use super::{Request, SendRequest, MAP};
+use super::{Request, ShareRequest, QUEUE};
 use actix_web::actix::{Addr, System};
 use actix_web::server::{self, HttpHandler, HttpHandlerTask, HttpServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use channel;
 use futures::Future;
+use rand::prelude::random;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 
@@ -11,21 +12,21 @@ type AddrType = Addr<HttpServer<Box<HttpHandler<Task = Box<HttpHandlerTask>>>>>;
 
 pub struct TestServer {
     addr: AddrType,
-    request: channel::Receiver<u8>,
+    id: u8,
     socket: (IpAddr, u16),
 }
 
 impl TestServer {
     pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> Self {
         let (tx, rx) = channel::unbounded();
-        let (tx_req, rx_req) = channel::unbounded();
+        let id: u8 = random();
 
         let _ = thread::spawn(move || {
-            let sys = System::new("test-server");
+            let sys = System::new(format!("test-server-{}", id));
             let server = server::new(move || {
                 vec![
                     App::new()
-                        .middleware(SendRequest { tx: tx_req.clone() })
+                        .middleware(ShareRequest { id })
                         .default_resource(move |r| r.f(func))
                         .boxed(),
                 ]
@@ -35,6 +36,7 @@ impl TestServer {
             let sockets = server.addrs();
             let addr = server.shutdown_timeout(0).start();
             tx.clone().send((addr, sockets));
+
             let _ = sys.run();
         });
 
@@ -43,15 +45,15 @@ impl TestServer {
 
         Self {
             addr,
-            request: rx_req,
+            id,
             socket: (socket.ip(), socket.port()),
         }
     }
 
-    pub fn received_request(&self) -> Option<Request> {
-        match self.request.try_recv() {
-            Some(id) => MAP.lock().remove(&id),
-            None => None,
+    pub fn requests(&self) -> Vec<Request> {
+        match QUEUE.lock().remove(&self.id) {
+            Some(requests) => requests,
+            None => vec![],
         }
     }
 

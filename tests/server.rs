@@ -44,17 +44,18 @@ fn validate_client_request() {
         .body(request_content.clone())
         .send();
 
-    let request = server.received_request();
-    assert!(request.is_some());
+    let requests = server.requests();
+
+    assert_eq!(requests.len(), 1);
 
     let Request {
-        body,
-        headers,
-        method,
-        path,
-    } = request.unwrap();
+        ref body,
+        ref headers,
+        ref method,
+        ref path,
+    } = requests[0];
 
-    assert_eq!(request_content, body);
+    assert_eq!(&request_content, body);
     assert_eq!(Some(&String::from("100")), headers.get("content-length"));
     assert_eq!("POST", method);
     assert_eq!("/", path);
@@ -78,10 +79,10 @@ fn fetch_2nd_request_from_server() {
     let _ = reqwest::get(&server.url()).unwrap();
     let _ = reqwest::Client::new().post(&server.url()).body("2").send();
 
-    let _ = server.received_request().unwrap();
-    let request = server.received_request().unwrap();
+    let requests = server.requests();
 
-    assert_eq!("2", request.body);
+    assert_eq!(requests.len(), 2);
+    assert_eq!("2", requests[1].body);
 }
 
 fn create_rand_string(size: usize) -> String {

@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.2.4
+## Unreleased
+* remove TestServer::received_request()
+* add TestServer::requests() returning all requests in vector
+
+## 0.2.4 
 * upgrade to [actix-web](https://github.com/actix/actix-web) version 0.7.2
 * restructure lib
 * [clippy](https://github.com/rust-lang-nursery/rust-clippy) compliance

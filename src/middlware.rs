@@ -1,16 +1,14 @@
-use super::{Request, SendRequest, MAP};
+use super::{Request, ShareRequest, QUEUE};
 use actix_web::{
     middleware::{Middleware, Started}, Error, HttpMessage, HttpRequest, Result,
 };
 use bytes::BytesMut;
 use futures::{Future, Stream};
-use rand::prelude::random;
 use std::collections::HashMap;
 
-impl<S: 'static> Middleware<S> for SendRequest {
+impl<S> Middleware<S> for ShareRequest {
     fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
-        let id: u8 = random();
-        self.tx.send(id);
+        let id = self.id;
 
         let headers = req.headers()
             .iter()
@@ -27,27 +25,27 @@ impl<S: 'static> Middleware<S> for SendRequest {
         let method = req.method().to_string();
         let path = req.path().to_string();
 
-        let fut = req.clone()
-            .payload()
+        let fut = req.payload()
             .from_err()
-            .fold(
-                BytesMut::new(),
-                move |mut body, chunk| -> Result<_, Error> {
-                    body.extend_from_slice(&chunk);
-                    Ok(body)
-                },
-            )
+            .fold(BytesMut::new(), |mut body, chunk| -> Result<_, Error> {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            })
             .and_then(move |body| {
-                MAP.lock().insert(
-                    id,
-                    Request {
-                        body: String::from_utf8(body.to_vec())
-                            .expect("Failed to extract request body"),
-                        headers,
-                        method,
-                        path,
-                    },
-                );
+                let mut queue = match QUEUE.lock().remove(&id) {
+                    Some(queue) => queue,
+                    None => vec![],
+                };
+
+                queue.push(Request {
+                    body: String::from_utf8(body.to_vec()).expect("Failed to extract request body"),
+                    headers,
+                    method,
+                    path,
+                });
+
+                QUEUE.lock().insert(id, queue);
+
                 Ok(None)
             });
 
