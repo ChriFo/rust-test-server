@@ -22,7 +22,7 @@ impl TestServer {
         let id: u8 = random();
 
         let _ = thread::spawn(move || {
-            let sys = System::new("test-server");
+            let sys = System::new(format!("test-server-{}", id));
             let server = server::new(move || {
                 vec![
                     App::new()
