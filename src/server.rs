@@ -1,5 +1,5 @@
 use super::{Request, SendRequest, MAP};
-use actix::prelude::{Addr, System};
+use actix_web::actix::{Addr, System};
 use actix_web::server::{self, HttpHandler, HttpHandlerTask, HttpServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use channel;

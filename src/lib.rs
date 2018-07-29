@@ -1,4 +1,3 @@
-extern crate actix;
 extern crate actix_web;
 extern crate antidote;
 extern crate bytes;
