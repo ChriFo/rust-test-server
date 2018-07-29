@@ -16,7 +16,7 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    pub fn new(port: u16, func: for<'r> fn(&'r HttpRequest) -> HttpResponse) -> Self {
+    pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> Self {
         let (tx, rx) = channel::unbounded();
         let (tx_req, rx_req) = channel::unbounded();
 
