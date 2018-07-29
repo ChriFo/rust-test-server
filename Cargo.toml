@@ -1,6 +1,6 @@
 [package]
 name = "test-server"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Christian Fochler <mail@christianfochler.de>"]
 license = "MIT"
 repository = "https://github.com/ChriFo/test-server-rs"
