@@ -1,13 +1,12 @@
 [package]
 name = "test-server"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Christian Fochler <mail@christianfochler.de>"]
 license = "MIT"
 repository = "https://github.com/ChriFo/test-server-rs"
 publish = false
 
 [dependencies]
-actix = "0.7.0"
 antidote = "1.0.0"
 bytes = "0.4.9"
 crossbeam-channel = "0.2.2"
