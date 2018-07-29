@@ -10,7 +10,7 @@
 test-server = { git = "https://github.com/ChriFo/test-server-rs", tag = "v0.2.3" }
 ```
 
-[HttpResponse](https://docs.rs/actix-web/0.6.11/actix_web/struct.HttpResponse.html) and [HttpRequests](https://docs.rs/actix-web/0.6.11/actix_web/struct.HttpRequest.html) are re-exports from actix/actix-web.
+[HttpResponse](https://actix.rs/api/actix-web/stable/actix_web/struct.HttpResponse.html) and [HttpRequest](https://actix.rs/api/actix-web/stable/actix_web/struct.HttpRequest.html) are re-exports from [actix-web](https://github.com/actix/actix-web).
 
 ```rust
 extern crate test_server;
