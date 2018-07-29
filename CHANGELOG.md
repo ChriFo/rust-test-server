@@ -2,6 +2,7 @@
 
 ## Unreleased
 * upgrade to actix/actix-web version 0.7
+* restructure lib
 * [clippy](https://github.com/rust-lang-nursery/rust-clippy) compliance
 * add one more test
 
