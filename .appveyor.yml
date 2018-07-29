@@ -1,0 +1,52 @@
+version: 0.3.0-{branch}-{build}
+
+image:
+    - Ubuntu
+    - Visual Studio 2017
+
+environment:
+    fast_finish: true
+    global:
+        RUST_BACKTRACE: full
+    matrix:
+        - platform: x64
+          target: x86_64-unknown-linux-gnu
+          toolchain: nightly
+        - platform: x64
+          target: x86_64-pc-windows-msvc
+          toolchain: nightly
+        - platform: x86
+          target: i686-pc-windows-msvc
+          toolchain: nightly
+
+matrix:
+  exclude:
+    - { image: Ubuntu,              target: x86_64-pc-windows-msvc }
+    - { image: Ubuntu,              target: i686-pc-windows-msvc }
+    - { image: Visual Studio 2017,  target: x86_64-unknown-linux-gnu }
+
+cache:
+    - '%USERPROFILE%\.cargo'
+    - '$HOME/.cargo'
+
+install:
+    - cmd: curl -sSf -o rustup-init.exe https://win.rustup.rs/
+    - cmd: rustup-init.exe -y --default-host %target% --default-toolchain %toolchain%
+    - cmd: set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+    - sh: curl https://sh.rustup.rs -sSf | sh -s -- -y --default-host $target --default-toolchain $toolchain
+    - sh: export PATH="$HOME/.cargo/bin:$PATH"
+    - rustc -vV
+    - cargo -vV
+    - rustup component add rustfmt-preview
+    - rustup component add clippy-preview
+
+build: off
+
+build_script: cargo build
+
+test_script:
+    - sh: cargo fmt --all -- --check
+    - sh: cargo clippy --release -- -Dclippy
+    - cargo test --verbose --all -- --nocapture
+
+deploy: off

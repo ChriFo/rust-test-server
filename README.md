@@ -1,6 +1,7 @@
 # (Integration) Test server
 
 ![GitHub tag](https://img.shields.io/github/tag/ChriFo/test-server-rs.svg)
+[![Build status](https://ci.appveyor.com/api/projects/status/5p9cok3o6qnd20yw?svg=true)](https://ci.appveyor.com/project/ChriFo/test-server-rs)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 ## Usage
