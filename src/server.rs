@@ -31,7 +31,7 @@ impl TestServer {
                         .boxed(),
                 ]
             }).bind(SocketAddr::from(([127, 0, 0, 1], port)))
-                .expect("Failed to bind");
+            .expect("Failed to bind");
 
             let sockets = server.addrs();
             let addr = server.shutdown_timeout(0).start();

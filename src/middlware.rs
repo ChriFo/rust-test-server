@@ -1,6 +1,7 @@
 use super::{Request, ShareRequest, QUEUE};
 use actix_web::{
-    middleware::{Middleware, Started}, Error, HttpMessage, HttpRequest, Result,
+    middleware::{Middleware, Started},
+    Error, HttpMessage, HttpRequest, Result,
 };
 use bytes::BytesMut;
 use futures::{Future, Stream};
@@ -10,7 +11,8 @@ impl<S> Middleware<S> for ShareRequest {
     fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
         let id = self.id;
 
-        let headers = req.headers()
+        let headers = req
+            .headers()
             .iter()
             .map(|(k, v)| {
                 (
@@ -19,19 +21,18 @@ impl<S> Middleware<S> for ShareRequest {
                         .expect("Failed to convert header value")
                         .to_string(),
                 )
-            })
-            .collect::<HashMap<_, _>>();
+            }).collect::<HashMap<_, _>>();
 
         let method = req.method().to_string();
         let path = req.path().to_string();
 
-        let fut = req.payload()
+        let fut = req
+            .payload()
             .from_err()
             .fold(BytesMut::new(), |mut body, chunk| -> Result<_, Error> {
                 body.extend_from_slice(&chunk);
                 Ok(body)
-            })
-            .and_then(move |body| {
+            }).and_then(move |body| {
                 let mut queue = match QUEUE.lock().remove(&id) {
                     Some(queue) => queue,
                     None => vec![],
