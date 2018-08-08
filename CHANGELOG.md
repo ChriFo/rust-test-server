@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.0]
 * add public [helper](https://github.com/ChriFo/test-server-rs/blob/master/src/helper.rs) mod
 * update dependencies
 
