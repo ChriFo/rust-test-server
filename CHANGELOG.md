@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+* add public [helper](https://github.com/ChriFo/test-server-rs/blob/master/src/helper.rs) mod
+* update dependencies
+
 ## 0.3.0
 * remove TestServer::received_request()
 * add TestServer::requests() returning all requests in vector
