@@ -10,6 +10,7 @@ extern crate rand;
 pub use self::server::TestServer;
 pub use actix_web::{HttpRequest, HttpResponse};
 
+pub mod helper;
 mod middlware;
 mod server;
 
