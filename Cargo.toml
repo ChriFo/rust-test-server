@@ -9,8 +9,8 @@ publish = false
 [dependencies]
 antidote = "1.0.0"
 bytes = "0.4.9"
-crossbeam-channel = "0.2.2"
-futures = "0.1.21"
+crossbeam-channel = "0.2.4"
+futures = "0.1.23"
 lazy_static = "1.1.0"
 rand = "0.5.5"
 
@@ -19,4 +19,4 @@ version = "0.7.3"
 default-features = false
 
 [dev-dependencies]
-reqwest = "0.8.6"
+reqwest = "0.8.7"
