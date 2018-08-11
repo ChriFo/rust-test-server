@@ -1,7 +1,7 @@
 use rand::{self, distributions::Alphanumeric, Rng};
 use std::{fs::File, io::Read};
 
-pub fn create_rand_string(size: usize) -> String {
+pub fn random_string(size: usize) -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(size)
