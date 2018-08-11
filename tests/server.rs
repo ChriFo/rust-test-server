@@ -34,7 +34,7 @@ fn restart_server_at_same_port() {
 fn validate_client_request() {
     let server = TestServer::new(0, |_| HttpResponse::Ok().into());
 
-    let request_content = helper::create_rand_string(100);
+    let request_content = helper::random_string(100);
     let client = reqwest::Client::new();
     let _ = client
         .post(&server.url())
@@ -61,13 +61,13 @@ fn validate_client_request() {
 #[test]
 fn not_necessary_to_fetch_request_from_server() {
     let server = TestServer::new(0, |_| {
-        let content = helper::read_file("tests/sample.json");
+        let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content).into()
     });
     let mut response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(
-        helper::read_file("tests/sample.json"),
+        helper::read_file("tests/sample.json").unwrap(),
         response.text().unwrap()
     );
 }
