@@ -32,12 +32,13 @@ fn example_test() {
     // request against server
     let _ = client::get(&server.url());
 
-    // get received request as vector from server
-    let last_request = server.requests()[0];
+    assert_eq!(1, server.requests.len());
+
+    let last_request = server.requests.next().unwrap(); 
 
     assert_eq!("GET", last_request.method);
     assert_eq!("/", last_request.path);
-    // body and headers are also available
+    // body, headers and query params are also available
 }
 ```
 
