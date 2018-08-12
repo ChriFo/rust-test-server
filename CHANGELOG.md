@@ -1,6 +1,12 @@
 # Changelog
 
-## [0.4.0]
+## [Unreleased]
+* replace static mutex vector of requests by a crossbeam-channel based implementation 
+* adjust API and mod structure
+* update dependencies
+* add cargo audit test to CI
+
+## 0.4.0
 * add public [helper](https://github.com/ChriFo/test-server-rs/blob/master/src/helper.rs) mod
 * update dependencies
 
@@ -18,7 +24,7 @@
 * deliver request body
 
 ## 0.2.2
-* adjust api
+* adjust API
 * cleanup dependencies
 * add more tests
 

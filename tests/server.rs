@@ -34,40 +34,43 @@ fn restart_server_at_same_port() {
 fn validate_client_request() {
     let server = TestServer::new(0, |_| HttpResponse::Ok().into());
 
-    let request_content = helper::create_rand_string(100);
+    let request_content = helper::random_string(100);
     let client = reqwest::Client::new();
     let _ = client
         .post(&server.url())
         .body(request_content.clone())
         .send();
 
-    let requests = server.requests();
+    assert_eq!(server.requests.len(), 1);
 
-    assert_eq!(requests.len(), 1);
+    let request = server.requests.next();
+    assert!(request.is_some());
 
     let Request {
         ref body,
         ref headers,
         ref method,
         ref path,
-    } = requests[0];
+        ref query,
+    } = request.unwrap();
 
     assert_eq!(&request_content, body);
     assert_eq!(Some(&String::from("100")), headers.get("content-length"));
     assert_eq!("POST", method);
     assert_eq!("/", path);
+    assert!(query.is_empty());
 }
 
 #[test]
 fn not_necessary_to_fetch_request_from_server() {
     let server = TestServer::new(0, |_| {
-        let content = helper::read_file("tests/sample.json");
+        let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content).into()
     });
     let mut response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(
-        helper::read_file("tests/sample.json"),
+        helper::read_file("tests/sample.json").unwrap(),
         response.text().unwrap()
     );
 }
@@ -79,8 +82,11 @@ fn fetch_2nd_request_from_server() {
     let _ = reqwest::get(&server.url()).unwrap();
     let _ = reqwest::Client::new().post(&server.url()).body("2").send();
 
-    let requests = server.requests();
+    assert_eq!(server.requests.len(), 2);
 
-    assert_eq!(requests.len(), 2);
-    assert_eq!("2", requests[1].body);
+    let _ = server.requests.next();
+    let request = server.requests.next();
+
+    assert!(request.is_some());
+    assert_eq!("2", request.unwrap().body);
 }

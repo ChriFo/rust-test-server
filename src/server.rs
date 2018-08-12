@@ -1,10 +1,9 @@
-use super::{Request, ShareRequest, QUEUE};
+use super::{requests::ShareRequest, RequestReceiver};
 use actix_web::actix::{Addr, System};
 use actix_web::server::{self, HttpHandler, HttpHandlerTask, HttpServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use channel;
 use futures::Future;
-use rand::prelude::random;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 
@@ -12,21 +11,21 @@ type AddrType = Addr<HttpServer<Box<HttpHandler<Task = Box<HttpHandlerTask>>>>>;
 
 pub struct TestServer {
     addr: AddrType,
-    id: u8,
+    pub requests: RequestReceiver,
     socket: (IpAddr, u16),
 }
 
 impl TestServer {
     pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> Self {
         let (tx, rx) = channel::unbounded();
-        let id: u8 = random();
+        let (tx_req, rx_req) = channel::unbounded();
 
         let _ = thread::spawn(move || {
-            let sys = System::new(format!("test-server-{}", id));
+            let sys = System::new("test-server");
             let server = server::new(move || {
                 vec![
                     App::new()
-                        .middleware(ShareRequest { id })
+                        .middleware(ShareRequest { tx: tx_req.clone() })
                         .default_resource(move |r| r.f(func))
                         .boxed(),
                 ]
@@ -45,15 +44,8 @@ impl TestServer {
 
         Self {
             addr,
-            id,
+            requests: RequestReceiver { rx: rx_req },
             socket: (socket.ip(), socket.port()),
-        }
-    }
-
-    pub fn requests(&self) -> Vec<Request> {
-        match QUEUE.lock().remove(&self.id) {
-            Some(requests) => requests,
-            None => vec![],
         }
     }
 
