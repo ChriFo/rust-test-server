@@ -1,8 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-* adjust API
-* adjust mod structure
+* replace static mutex vector of requests by a crossbeam-channel based implementation 
+* adjust API and mod structure
 * update dependencies
 * add cargo audit test to CI
 
