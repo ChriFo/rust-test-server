@@ -43,6 +43,8 @@ install:
 
 build: off
 
+build_script: cargo build
+
 test_script:
     - sh: cargo audit
     - sh: cargo fmt --all -- --check
