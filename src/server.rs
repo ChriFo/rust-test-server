@@ -1,11 +1,9 @@
 use actix_web::actix::{Addr, System};
 use actix_web::server::{self, HttpHandler, HttpHandlerTask, HttpServer};
 use actix_web::{App, HttpRequest, HttpResponse};
-use channel;
 use futures::Future;
 use requests::{RequestReceiver, ShareRequest};
 use std::net::{IpAddr, SocketAddr};
-use std::thread;
 
 type AddrType = Addr<HttpServer<Box<HttpHandler<Task = Box<HttpHandlerTask>>>>>;
 
@@ -17,10 +15,10 @@ pub struct TestServer {
 
 impl TestServer {
     pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> Self {
-        let (tx, rx) = channel::unbounded();
-        let (tx_req, rx_req) = channel::unbounded();
+        let (tx, rx) = ::channel::unbounded();
+        let (tx_req, rx_req) = ::channel::unbounded();
 
-        let _ = thread::spawn(move || {
+        let _ = ::std::thread::spawn(move || {
             let sys = System::new("test-server");
             let server = server::new(move || {
                 vec![
