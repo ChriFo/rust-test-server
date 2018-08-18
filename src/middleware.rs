@@ -1,10 +1,10 @@
-use super::{requests::ShareRequest, Request};
 use actix_web::{
     middleware::{Middleware, Started},
     Error, HttpMessage, HttpRequest, Result,
 };
 use bytes::BytesMut;
 use futures::{Future, Stream};
+use requests::{Request, ShareRequest};
 use std::collections::HashMap;
 
 impl<S> Middleware<S> for ShareRequest {

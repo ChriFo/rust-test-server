@@ -1,9 +1,9 @@
-use super::{requests::ShareRequest, RequestReceiver};
 use actix_web::actix::{Addr, System};
 use actix_web::server::{self, HttpHandler, HttpHandlerTask, HttpServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use channel;
 use futures::Future;
+use requests::{RequestReceiver, ShareRequest};
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 
