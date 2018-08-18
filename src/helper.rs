@@ -1,4 +1,3 @@
-pub use rand::random;
 use rand::{self, distributions::Alphanumeric, Rng};
 use std::{
     fs::File,
