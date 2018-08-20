@@ -57,3 +57,23 @@ fn extract_query<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
         .map(|(k, v)| (k.as_str().to_string(), v.clone()))
         .collect::<HashMap<_, _>>()
 }
+
+#[test]
+fn test_middleware() {
+    let (tx, mut rx) = ::channel::unbounded();
+
+    let mut srv = ::actix_web::test::TestServer::new(move |app| {
+        app.middleware(ShareRequest { tx: tx.clone() })
+            .handler(|_| ::actix_web::HttpResponse::Ok())
+    });
+
+    let request = srv.get().finish().unwrap();
+    let response = srv.execute(request.send()).unwrap();
+
+    assert!(response.status().is_success());
+    assert_eq!(rx.len(), 1);
+
+    let request: Option<Request> = rx.next();
+
+    assert!(request.is_some());
+}
