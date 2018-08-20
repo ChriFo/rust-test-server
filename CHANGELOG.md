@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.1
 * adjust imports and mod naming
 
 ## 0.5.0
