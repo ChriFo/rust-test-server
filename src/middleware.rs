@@ -59,6 +59,7 @@ fn extract_query<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn test_middleware() {
     let (tx, mut rx) = ::channel::unbounded();
 
