@@ -16,15 +16,15 @@ test-server = { git = "https://github.com/ChriFo/test-server-rs", tag = "v0.5.0"
 ```rust
 extern crate test_server;
 
-use test_server::{HttpResponse, TestServer};
+use test_server::HttpResponse;
 
 #[test]
 fn example_test() {
     // start server at random port
-    let _ = TestServer::new(0, |_| HttpResponse::Ok().into());
+    let _ = test_server::new(0, |_| HttpResponse::Ok().into());
 
     // start server at given port
-    let server = TestServer::new(8080, |req| {
+    let server = test_server::new(8080, |req| {
         println!("Request: {:#?}", req);
         HttpResponse::Ok().body("hello world")
     });

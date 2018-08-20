@@ -3,12 +3,14 @@ extern crate bytes;
 extern crate crossbeam_channel as channel;
 extern crate futures;
 extern crate rand;
+#[cfg(test)]
+extern crate spectral;
 
-pub use self::requests::{Request, RequestReceiver};
-pub use self::server::TestServer;
 pub use actix_web::{HttpRequest, HttpResponse};
+pub use requests::{Request, RequestReceiver};
+pub use server::{new, TestServer};
 
 pub mod helper;
-mod middlware;
+mod middleware;
 mod requests;
 mod server;

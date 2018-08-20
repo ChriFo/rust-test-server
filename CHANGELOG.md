@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* adjust imports and mod naming
+
 ## 0.5.0
 * replace static mutex vector of requests by a crossbeam-channel based implementation 
 * adjust API and mod structure

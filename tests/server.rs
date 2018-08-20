@@ -1,12 +1,12 @@
 extern crate reqwest;
-extern crate test_server;
+extern crate test_server as server;
 
 use reqwest::StatusCode;
-use test_server::{helper, HttpResponse, Request, TestServer};
+use server::{helper, HttpResponse, Request};
 
 #[test]
 fn start_server_at_given_port() {
-    let server = TestServer::new(65432, |_| HttpResponse::Ok().into());
+    let server = server::new(65432, |_| HttpResponse::Ok().into());
 
     assert!(&server.url().contains(":65432"));
 
@@ -18,13 +18,13 @@ fn start_server_at_given_port() {
 #[test]
 #[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn restart_server_at_same_port() {
-    let mut server = TestServer::new(65433, |_| HttpResponse::Ok().into());
+    let mut server = server::new(65433, |_| HttpResponse::Ok().into());
     let response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(StatusCode::Ok, response.status());
 
     server.stop();
-    server = TestServer::new(65433, |_| HttpResponse::BadRequest().into());
+    server = server::new(65433, |_| HttpResponse::BadRequest().into());
     let response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(StatusCode::BadRequest, response.status());
@@ -32,7 +32,7 @@ fn restart_server_at_same_port() {
 
 #[test]
 fn validate_client_request() {
-    let server = TestServer::new(0, |_| HttpResponse::Ok().into());
+    let server = server::new(0, |_| HttpResponse::Ok().into());
 
     let request_content = helper::random_string(100);
     let client = reqwest::Client::new();
@@ -63,7 +63,7 @@ fn validate_client_request() {
 
 #[test]
 fn not_necessary_to_fetch_request_from_server() {
-    let server = TestServer::new(0, |_| {
+    let server = server::new(0, |_| {
         let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content).into()
     });
@@ -77,7 +77,7 @@ fn not_necessary_to_fetch_request_from_server() {
 
 #[test]
 fn fetch_2nd_request_from_server() {
-    let server = TestServer::new(0, |_| HttpResponse::Ok().into());
+    let server = server::new(0, |_| HttpResponse::Ok().into());
 
     let _ = reqwest::get(&server.url()).unwrap();
     let _ = reqwest::Client::new().post(&server.url()).body("2").send();
