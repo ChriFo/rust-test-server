@@ -8,7 +8,7 @@ extern crate spectral;
 
 pub use actix_web::{HttpRequest, HttpResponse};
 pub use requests::{Request, RequestReceiver};
-pub use server::TestServer;
+pub use server::{new, TestServer};
 
 pub mod helper;
 mod middleware;
