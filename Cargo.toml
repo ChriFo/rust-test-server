@@ -13,9 +13,9 @@ futures = "0.1.23"
 rand = "0.5.5"
 
 [dependencies.actix-web]
-version = "0.7.3"
+version = "0.7.5"
 default-features = false
 
 [dev-dependencies]
-reqwest = "0.8.7"
+reqwest = "0.8.8"
 spectral = "0.6.0"
