@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* fix TestSevrver addr field type
+
 ## 0.5.1
 * adjust imports and mod naming
 

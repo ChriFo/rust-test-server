@@ -1,21 +1,19 @@
 use actix_web::actix::{Addr, System};
-use actix_web::server::{self, HttpHandler, HttpHandlerTask, HttpServer};
+use actix_web::server::{self, Server, StopServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use futures::Future;
 use requests::{RequestReceiver, ShareRequest};
 use std::net::{IpAddr, SocketAddr};
 
-type AddrType = Addr<HttpServer<Box<HttpHandler<Task = Box<HttpHandlerTask>>>>>;
-
 pub struct TestServer {
-    addr: AddrType,
+    addr: Addr<Server>,
     pub requests: RequestReceiver,
     socket: (IpAddr, u16),
 }
 
 impl TestServer {
     pub fn stop(&self) {
-        let _ = self.addr.send(server::StopServer { graceful: true }).wait();
+        let _ = self.addr.send(StopServer { graceful: true }).wait();
     }
 
     pub fn url(&self) -> String {
