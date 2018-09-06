@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.2
 * fix TestSevrver addr field type
 
 ## 0.5.1
