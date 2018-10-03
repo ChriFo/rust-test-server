@@ -12,7 +12,7 @@ fn start_server_at_given_port() {
 
     let response = reqwest::get(&server.url()).unwrap();
 
-    assert_eq!(StatusCode::Ok, response.status());
+    assert_eq!(StatusCode::OK, response.status());
 }
 
 #[test]
@@ -21,13 +21,13 @@ fn restart_server_at_same_port() {
     let mut server = server::new(65433, |_| HttpResponse::Ok().into());
     let response = reqwest::get(&server.url()).unwrap();
 
-    assert_eq!(StatusCode::Ok, response.status());
+    assert_eq!(StatusCode::OK, response.status());
 
     server.stop();
     server = server::new(65433, |_| HttpResponse::BadRequest().into());
     let response = reqwest::get(&server.url()).unwrap();
 
-    assert_eq!(StatusCode::BadRequest, response.status());
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn validate_client_request() {
 fn not_necessary_to_fetch_request_from_server() {
     let server = server::new(0, |_| {
         let content = helper::read_file("tests/sample.json").unwrap();
-        HttpResponse::Ok().body(content).into()
+        HttpResponse::Ok().body(content)
     });
     let mut response = reqwest::get(&server.url()).unwrap();
 

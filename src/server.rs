@@ -40,7 +40,8 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
                     .default_resource(move |r| r.f(func))
                     .boxed(),
             ]
-        }).bind(SocketAddr::from(([127, 0, 0, 1], port)))
+        })
+        .bind(SocketAddr::from(([127, 0, 0, 1], port)))
         .expect("Failed to bind");
 
         let sockets = server.addrs();
