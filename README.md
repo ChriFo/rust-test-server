@@ -8,7 +8,7 @@
 
 ```toml
 [dev-dependencies]
-test-server = { git = "https://github.com/ChriFo/test-server-rs", tag = "v0.5.2" }
+test-server = { git = "https://github.com/ChriFo/test-server-rs", tag = "v0.5.3" }
 ```
 
 [HttpResponse](https://actix.rs/api/actix-web/stable/actix_web/struct.HttpResponse.html) and [HttpRequest](https://actix.rs/api/actix-web/stable/actix_web/struct.HttpRequest.html) are re-exports from [actix-web](https://github.com/actix/actix-web).
