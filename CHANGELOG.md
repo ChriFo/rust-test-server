@@ -1,7 +1,11 @@
 # Changelog
 
+## Unreleased
+* update dependencies
+* library maintenance
+
 ## 0.5.2
-* fix TestSevrver addr field type
+* fix TestServer addr field type
 
 ## 0.5.1
 * adjust imports and mod naming
