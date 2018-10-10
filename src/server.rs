@@ -1,5 +1,6 @@
+use actix_net::server::Server;
 use actix_web::actix::{Addr, System};
-use actix_web::server::{self, Server, StopServer};
+use actix_web::server::{self, StopServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use futures::Future;
 use requests::{RequestReceiver, ShareRequest};

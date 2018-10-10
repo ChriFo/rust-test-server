@@ -1,3 +1,4 @@
+extern crate actix_net;
 extern crate actix_web;
 extern crate bytes;
 extern crate crossbeam_channel as channel;
