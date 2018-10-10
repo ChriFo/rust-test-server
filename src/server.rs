@@ -1,5 +1,6 @@
+use actix_net::server::Server;
 use actix_web::actix::{Addr, System};
-use actix_web::server::{self, Server, StopServer};
+use actix_web::server::{self, StopServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use futures::Future;
 use requests::{RequestReceiver, ShareRequest};
@@ -40,7 +41,8 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
                     .default_resource(move |r| r.f(func))
                     .boxed(),
             ]
-        }).bind(SocketAddr::from(([127, 0, 0, 1], port)))
+        })
+        .bind(SocketAddr::from(([127, 0, 0, 1], port)))
         .expect("Failed to bind");
 
         let sockets = server.addrs();

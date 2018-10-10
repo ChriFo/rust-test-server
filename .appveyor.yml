@@ -48,7 +48,7 @@ build_script: cargo build
 test_script:
     - sh: cargo audit
     - sh: cargo fmt --all -- --check
-    - sh: cargo clippy --release -- -Dclippy::all
+    - sh: cargo clippy --all-targets -- -D warnings
     - cargo test --verbose --all -- --nocapture
 
 deploy: off

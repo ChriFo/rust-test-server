@@ -23,7 +23,8 @@ impl<S> Middleware<S> for ShareRequest {
             .fold(BytesMut::new(), |mut body, chunk| -> Result<_, Error> {
                 body.extend_from_slice(&chunk);
                 Ok(body)
-            }).and_then(move |body| {
+            })
+            .and_then(move |body| {
                 tx.send(Request {
                     body: String::from_utf8(body.to_vec()).expect("Failed to extract request body"),
                     headers,
@@ -48,7 +49,8 @@ fn extract_headers<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
                     .expect("Failed to convert header value")
                     .to_string(),
             )
-        }).collect::<HashMap<_, _>>()
+        })
+        .collect::<HashMap<_, _>>()
 }
 
 fn extract_query<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
