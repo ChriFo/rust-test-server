@@ -63,7 +63,7 @@ fn extract_query<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
 #[test]
 #[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn test_middleware() {
-    let (tx, mut rx) = ::channel::unbounded();
+    let (tx, rx) = ::channel::unbounded();
 
     let mut srv = ::actix_web::test::TestServer::new(move |app| {
         app.middleware(ShareRequest { tx: tx.clone() })

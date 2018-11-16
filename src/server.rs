@@ -35,12 +35,10 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
     let _ = ::std::thread::spawn(move || {
         let sys = System::new("test-server");
         let server = server::new(move || {
-            vec![
-                App::new()
-                    .middleware(ShareRequest { tx: tx_req.clone() })
-                    .default_resource(move |r| r.f(func))
-                    .boxed(),
-            ]
+            vec![App::new()
+                .middleware(ShareRequest { tx: tx_req.clone() })
+                .default_resource(move |r| r.f(func))
+                .boxed()]
         })
         .bind(SocketAddr::from(([127, 0, 0, 1], port)))
         .expect("Failed to bind");
