@@ -56,6 +56,6 @@ mod tests {
         let content = read_file("tests/read_file_test");
 
         assert!(content.is_ok());
-        assert_eq!(&content.unwrap(), "a1b2c3\n");
+        assert_eq!(&content.unwrap(), "a1b2c3");
     }
 }
