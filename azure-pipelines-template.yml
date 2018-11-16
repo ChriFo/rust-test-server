@@ -4,13 +4,17 @@ jobs:
     vmImage: ${{ parameters.vmImage }}
   steps:
   - ${{ if ne(parameters.name, 'Windows') }}:
-    # Linux and macOS.
     - script: |
         curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $RUSTUP_TOOLCHAIN
         echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"
       displayName: Install rust
-    - script: cargo install -f cargo-audit
-      displayName: Install cargo-audit
+  - ${{ if eq(parameters.name, 'Windows') }}:
+    - script: |
+        curl -sSf -o rustup-init.exe https://win.rustup.rs
+        rustup-init.exe -y --default-toolchain %RUSTUP_TOOLCHAIN%
+        set PATH=%PATH%;%USERPROFILE%\.cargo\bin
+        echo "##vso[task.setvariable variable=PATH;]%PATH%;%USERPROFILE%\.cargo\bin"
+      displayName: Install rust (windows)
     - script: rustup component add rustfmt-preview
       displayName: Install cargo-fmt
     - script: cargo fmt --all -- --check
@@ -19,22 +23,16 @@ jobs:
       displayName: Install clippy
     - script: cargo clippy --all-targets -- -D warnings
       displayName: Check clippy linting
-  - ${{ if eq(parameters.name, 'Windows') }}:
-    # Windows.
-    - script: |
-        curl -sSf -o rustup-init.exe https://win.rustup.rs
-        rustup-init.exe -y --default-toolchain %RUSTUP_TOOLCHAIN%
-        set PATH=%PATH%;%USERPROFILE%\.cargo\bin
-        echo "##vso[task.setvariable variable=PATH;]%PATH%;%USERPROFILE%\.cargo\bin"
-      displayName: Install rust (windows)
-  # All platforms.
+    - script: cargo install -f cargo-audit
+      displayName: Install cargo-audit
   - script: |
         rustc -Vv
         cargo -V
     displayName: Query rust and cargo versions
   - script: cargo build
     displayName: Build code
-  - script: cargo audit
-    displayName: Audit Cargo.lock files for crates with security vulnerabilities
+  - ${{ if eq(parameters.name, 'Windows') }}:
+    - script: cargo audit
+      displayName: Audit Cargo.lock files for crates with security vulnerabilities
   - script: cargo test --verbose --all -- --nocapture
     displayName: Run tests

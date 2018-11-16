@@ -37,7 +37,7 @@ mod tests {
 
     #[test]
     fn random_strings_are_different() {
-        let size: u8 = random();
+        let size: u8 = std::cmp::max(1, random());
         let first_string = random_string(size as usize);
         let second_string = random_string(size as usize);
 
@@ -56,6 +56,6 @@ mod tests {
         let content = read_file("tests/read_file_test");
 
         assert!(content.is_ok());
-        assert_eq!(&content.unwrap(), "a1b2c3\n");
+        assert_eq!(&content.unwrap(), "a1b2c3");
     }
 }

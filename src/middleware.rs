@@ -25,7 +25,7 @@ impl<S> Middleware<S> for ShareRequest {
                 Ok(body)
             })
             .and_then(move |body| {
-                tx.send(Request {
+                let _ = tx.send(Request {
                     body: String::from_utf8(body.to_vec()).expect("Failed to extract request body"),
                     headers,
                     method,
@@ -63,7 +63,7 @@ fn extract_query<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
 #[test]
 #[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn test_middleware() {
-    let (tx, mut rx) = ::channel::unbounded();
+    let (tx, rx) = ::channel::unbounded();
 
     let mut srv = ::actix_web::test::TestServer::new(move |app| {
         app.middleware(ShareRequest { tx: tx.clone() })
@@ -76,7 +76,7 @@ fn test_middleware() {
     assert!(response.status().is_success());
     assert_eq!(rx.len(), 1);
 
-    let request: Option<Request> = rx.next();
+    let request: Result<Request, ::channel::RecvError> = rx.recv();
 
-    assert!(request.is_some());
+    assert!(request.is_ok());
 }
