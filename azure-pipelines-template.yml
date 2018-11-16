@@ -11,8 +11,6 @@ jobs:
       displayName: Install rust
     - script: cargo install -f cargo-audit
       displayName: Install cargo-audit
-    - script: cargo audit
-      displayName: Audit Cargo.lock files for crates with security vulnerabilities
     - script: rustup component add rustfmt-preview
       displayName: Install cargo-fmt
     - script: cargo fmt --all -- --check
@@ -36,5 +34,7 @@ jobs:
     displayName: Query rust and cargo versions
   - script: cargo build
     displayName: Build code
+  - script: cargo audit
+    displayName: Audit Cargo.lock files for crates with security vulnerabilities
   - script: cargo test --verbose --all -- --nocapture
     displayName: Run tests
