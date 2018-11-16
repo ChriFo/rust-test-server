@@ -76,7 +76,7 @@ fn test_middleware() {
     assert!(response.status().is_success());
     assert_eq!(rx.len(), 1);
 
-    let request: Option<Request> = rx.next();
+    let request: Result<Request, ::channel::RecvError> = rx.recv();
 
-    assert!(request.is_some());
+    assert!(request.is_ok());
 }

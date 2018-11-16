@@ -23,7 +23,7 @@ impl RequestReceiver {
     }
 
     pub fn next(&self) -> Option<Request> {
-        self.rx.try_recv()
+        self.rx.try_recv().ok()
     }
 }
 
