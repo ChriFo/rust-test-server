@@ -37,7 +37,7 @@ mod tests {
 
     #[test]
     fn random_strings_are_different() {
-        let size: u8 = random();
+        let size: u8 = std::cmp::max(1, random());
         let first_string = random_string(size as usize);
         let second_string = random_string(size as usize);
 
