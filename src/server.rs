@@ -47,7 +47,7 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
 
         let sockets = server.addrs();
         let addr = server.shutdown_timeout(0).start();
-        tx.clone().send((addr, sockets));
+        let _ = tx.clone().send((addr, sockets));
 
         let _ = sys.run();
     });

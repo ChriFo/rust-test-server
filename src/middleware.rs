@@ -25,7 +25,7 @@ impl<S> Middleware<S> for ShareRequest {
                 Ok(body)
             })
             .and_then(move |body| {
-                tx.send(Request {
+                let _ = tx.send(Request {
                     body: String::from_utf8(body.to_vec()).expect("Failed to extract request body"),
                     headers,
                     method,
