@@ -1,9 +1,9 @@
+use crate::requests::{RequestReceiver, ShareRequest};
 use actix_net::server::Server;
 use actix_web::actix::{Addr, System};
 use actix_web::server::{self, StopServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use futures::Future;
-use crate::requests::{RequestReceiver, ShareRequest};
 use std::net::{IpAddr, SocketAddr};
 
 pub struct TestServer {
