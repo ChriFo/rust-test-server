@@ -7,16 +7,16 @@ repository = "https://github.com/ChriFo/test-server-rs"
 publish = false
 
 [dependencies]
-actix-net = "0.2.2"
-bytes = "0.4.10"
-crossbeam-channel = "0.3.1"
+actix-net = "0.2.6"
+bytes = "0.4.12"
+crossbeam-channel = "0.3.8"
 futures = "0.1.25"
-rand = "0.6.0"
+rand = "0.6.5"
 
 [dependencies.actix-web]
-version = "0.7.14"
+version = "0.7.18"
 default-features = false
 
 [dev-dependencies]
-reqwest = "0.9.5"
+reqwest = "0.9.11"
 spectral = "0.6.0"
