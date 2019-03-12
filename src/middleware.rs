@@ -1,10 +1,10 @@
+use crate::requests::{Request, ShareRequest};
 use actix_web::{
     middleware::{Middleware, Started},
     Error, HttpMessage, HttpRequest, Result,
 };
 use bytes::BytesMut;
 use futures::{Future, Stream};
-use requests::{Request, ShareRequest};
 use std::collections::HashMap;
 
 impl<S> Middleware<S> for ShareRequest {
@@ -63,7 +63,7 @@ fn extract_query<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
 #[test]
 #[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn test_middleware() {
-    let (tx, rx) = ::channel::unbounded();
+    let (tx, rx) = crate::channel::unbounded();
 
     let mut srv = ::actix_web::test::TestServer::new(move |app| {
         app.middleware(ShareRequest { tx: tx.clone() })
@@ -76,7 +76,7 @@ fn test_middleware() {
     assert!(response.status().is_success());
     assert_eq!(rx.len(), 1);
 
-    let request: Result<Request, ::channel::RecvError> = rx.recv();
+    let request: Result<Request, crate::channel::RecvError> = rx.recv();
 
     assert!(request.is_ok());
 }

@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.5.3/0.5.4
+## Unreleases
+* switch to edition "2018" 
 * update dependencies
+
+## 0.5.3/0.5.4
 * library maintenance
+* update dependencies
 
 ## 0.5.2
 * fix TestServer addr field type

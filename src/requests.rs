@@ -10,7 +10,7 @@ pub struct Request {
 }
 
 pub struct RequestReceiver {
-    pub rx: ::channel::Receiver<Request>,
+    pub rx: crate::channel::Receiver<Request>,
 }
 
 impl RequestReceiver {
@@ -28,5 +28,5 @@ impl RequestReceiver {
 }
 
 pub(crate) struct ShareRequest {
-    pub(crate) tx: ::channel::Sender<Request>,
+    pub(crate) tx: crate::channel::Sender<Request>,
 }

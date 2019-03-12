@@ -1,8 +1,8 @@
 extern crate reqwest;
 extern crate test_server as server;
 
+use crate::server::{helper, HttpResponse, Request};
 use reqwest::StatusCode;
-use server::{helper, HttpResponse, Request};
 
 #[test]
 fn start_server_at_given_port() {
