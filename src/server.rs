@@ -3,7 +3,7 @@ use actix_web::actix::{Addr, System};
 use actix_web::server::{self, StopServer};
 use actix_web::{App, HttpRequest, HttpResponse};
 use futures::Future;
-use requests::{RequestReceiver, ShareRequest};
+use crate::requests::{RequestReceiver, ShareRequest};
 use std::net::{IpAddr, SocketAddr};
 
 pub struct TestServer {
@@ -29,8 +29,8 @@ impl Drop for TestServer {
 }
 
 pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
-    let (tx, rx) = ::channel::unbounded();
-    let (tx_req, rx_req) = ::channel::unbounded();
+    let (tx, rx) = crate::channel::unbounded();
+    let (tx_req, rx_req) = crate::channel::unbounded();
 
     let _ = ::std::thread::spawn(move || {
         let sys = System::new("test-server");
