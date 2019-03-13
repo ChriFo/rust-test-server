@@ -13,6 +13,8 @@ strategy:
     x86_64-unknown-linux-gnu:
       HOST_IMAGE: ubuntu-16.04
       RUSTFLAGS: '-C link-dead-code'
+      KCOV_TARBALL: v36.tar.gz
+      KCOV_DIR: kcov-36
 steps:
   - powershell: Invoke-WebRequest -Uri https://win.rustup.rs/ -OutFile rustup-init.exe
     condition: and(succeeded(), eq(variables['Agent.OS'],'Windows_NT'))
