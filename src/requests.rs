@@ -9,6 +9,7 @@ pub struct Request {
     pub query: HashMap<String, String>,
 }
 
+#[derive(Debug)]
 pub struct RequestReceiver {
     pub rx: crate::channel::Receiver<Request>,
 }
