@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleases
+## Unreleased
+* remove extern crates
+
+## 0.5.5
 * switch to edition "2018" 
 * update dependencies
 
