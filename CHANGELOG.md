@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.6
 * remove extern crates
 
 ## 0.5.5
