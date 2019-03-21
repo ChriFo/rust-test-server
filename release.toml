@@ -7,5 +7,5 @@ tag-prefix = ""
 pre-release-commit-message = "{{version}}"
 pre-release-replacements = [
     {file="CHANGELOG.md", search="Unreleased", replace="{{version}}"},
-    {file="README.md", search="tag = \"v[0-9\\.]+\"", replace="tag = \"v{{version}}\""},
+    {file="README.md", search="tag = \"[0-9\\.]+\"", replace="tag = \"{{version}}\""},
 ]
