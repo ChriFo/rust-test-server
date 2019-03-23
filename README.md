@@ -27,6 +27,7 @@ fn example_test() {
     // start server at given port
     let server = test_server::new(8080, |req| {
         println!("Request: {:#?}", req);
+        // req.body is only available via server.requests
         HttpResponse::Ok().body("hello world")
     });
 
