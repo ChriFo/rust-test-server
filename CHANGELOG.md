@@ -2,6 +2,7 @@
 
 ## Unreleased
 * library maintenance
+* use failure crate and return results
 * update dependencies
 
 ## 0.5.6

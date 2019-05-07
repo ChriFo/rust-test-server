@@ -11,6 +11,7 @@ edition = "2018"
 actix-net = "0.2.6"
 bytes = "0.4.12"
 crossbeam-channel = "0.3.8"
+failure = "0.1.5"
 futures = "0.1.26"
 rand = "0.6.5"
 
