@@ -31,3 +31,57 @@ impl RequestReceiver {
 pub(crate) struct ShareRequest {
     pub(crate) tx: crate::channel::Sender<Request>,
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crossbeam_channel::Sender;
+    use std::rc::Rc;
+
+    #[test]
+    fn request_receiver_is_empty() {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        let rr = RequestReceiver{ rx: Rc::new(rx) };
+
+        assert!(rr.is_empty());
+
+        add_request(tx);
+
+        assert!(!rr.is_empty());
+    }
+
+    #[test]
+    fn request_reciever_len() {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        let rr = RequestReceiver{ rx: Rc::new(rx) };
+
+        assert_eq!(rr.len(), 0);
+
+        add_request(tx);
+
+        assert_eq!(rr.len(), 1);
+    }
+
+    #[test]
+    fn request_reciever_next() {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        let rr = RequestReceiver{ rx: Rc::new(rx) };
+
+        assert!(rr.next().is_none());
+
+        add_request(tx);
+
+        assert!(rr.next().is_some());
+    }
+
+    fn add_request(tx: Sender<Request>) {
+        let _ = tx.send(Request {
+            body: String::new(),
+            headers: HashMap::new(),
+            method: String::new(),
+            path: String::new(),
+            query: HashMap::new(),
+        });
+    }
+}
