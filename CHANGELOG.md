@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 * library maintenance
 * use failure crate and return results
 * update dependencies
