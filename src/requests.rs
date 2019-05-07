@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug)]
 pub struct Request {
@@ -11,7 +11,7 @@ pub struct Request {
 
 #[derive(Debug)]
 pub struct RequestReceiver {
-    pub rx: crate::channel::Receiver<Request>,
+    pub rx: Rc<crate::channel::Receiver<Request>>,
 }
 
 impl RequestReceiver {
