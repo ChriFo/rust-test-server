@@ -1,7 +1,6 @@
 variables:
   CHANNEL: stable
   RUST_BACKTRACE: full
-  RUST_TEST_THREADS: 1
 pool:
   vmImage:  $[ variables['HOST_IMAGE'] ]
 strategy:
