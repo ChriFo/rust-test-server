@@ -42,7 +42,7 @@ mod tests {
     #[test]
     fn request_receiver_is_empty() {
         let (tx, rx) = crossbeam_channel::unbounded();
-        let rr = RequestReceiver{ rx: Rc::new(rx) };
+        let rr = RequestReceiver { rx: Rc::new(rx) };
 
         assert!(rr.is_empty());
 
@@ -54,7 +54,7 @@ mod tests {
     #[test]
     fn request_reciever_len() {
         let (tx, rx) = crossbeam_channel::unbounded();
-        let rr = RequestReceiver{ rx: Rc::new(rx) };
+        let rr = RequestReceiver { rx: Rc::new(rx) };
 
         assert_eq!(rr.len(), 0);
 
@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn request_reciever_next() {
         let (tx, rx) = crossbeam_channel::unbounded();
-        let rr = RequestReceiver{ rx: Rc::new(rx) };
+        let rr = RequestReceiver { rx: Rc::new(rx) };
 
         assert!(rr.next().is_none());
 
@@ -76,12 +76,15 @@ mod tests {
     }
 
     fn add_request(tx: Sender<Request>) {
-        let _ = tx.send(Request {
+        if let Err(err) = tx.send(Request {
             body: String::new(),
             headers: HashMap::new(),
             method: String::new(),
             path: String::new(),
             query: HashMap::new(),
-        });
+        }) {
+            error!("Failed to send Request");
+            debug!("{}", err);
+        }
     }
 }
