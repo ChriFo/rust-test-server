@@ -1,36 +1,41 @@
 use crate::server::{helper, HttpResponse, Request};
+use failure::Error;
 use reqwest::StatusCode;
 use test_server as server;
 
 #[test]
-fn start_server_at_given_port() {
-    let server = server::new(65432, |_| HttpResponse::Ok().into());
+fn start_server_at_given_port() -> Result<(), Error> {
+    let server = server::new(65432, |_| HttpResponse::Ok().into())?;
 
     assert!(&server.url().contains(":65432"));
 
     let response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(StatusCode::OK, response.status());
+
+    Ok(())
 }
 
 #[test]
 #[cfg(not(target_os = "windows"))] // carllerche/mio#776
-fn restart_server_at_same_port() {
-    let mut server = server::new(65433, |_| HttpResponse::Ok().into());
+fn restart_server_at_same_port() -> Result<(), Error> {
+    let mut server = server::new(65433, |_| HttpResponse::Ok().into())?;
     let response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(StatusCode::OK, response.status());
 
     server.stop();
-    server = server::new(65433, |_| HttpResponse::BadRequest().into());
+    server = server::new(65433, |_| HttpResponse::BadRequest().into())?;
     let response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(StatusCode::BAD_REQUEST, response.status());
+
+    Ok(())
 }
 
 #[test]
-fn validate_client_request() {
-    let server = server::new(0, |_| HttpResponse::Ok().into());
+fn validate_client_request() -> Result<(), Error> {
+    let server = server::new(0, |_| HttpResponse::Ok().into())?;
 
     let request_content = helper::random_string(100);
     let client = reqwest::Client::new();
@@ -57,25 +62,29 @@ fn validate_client_request() {
     assert_eq!("POST", method);
     assert_eq!("/", path);
     assert!(query.is_empty());
+
+    Ok(())
 }
 
 #[test]
-fn not_necessary_to_fetch_request_from_server() {
+fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
     let server = server::new(0, |_| {
         let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content)
-    });
+    })?;
     let mut response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(
         helper::read_file("tests/sample.json").unwrap(),
         response.text().unwrap()
     );
+
+    Ok(())
 }
 
 #[test]
-fn fetch_2nd_request_from_server() {
-    let server = server::new(0, |_| HttpResponse::Ok().into());
+fn fetch_2nd_request_from_server() -> Result<(), Error> {
+    let server = server::new(0, |_| HttpResponse::Ok().into())?;
 
     let _ = reqwest::get(&server.url()).unwrap();
     let _ = reqwest::Client::new().post(&server.url()).body("2").send();
@@ -87,4 +96,6 @@ fn fetch_2nd_request_from_server() {
 
     assert!(request.is_some());
     assert_eq!("2", request.unwrap().body);
+
+    Ok(())
 }

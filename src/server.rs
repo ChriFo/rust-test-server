@@ -5,6 +5,7 @@ use actix_web::{
     server::{self, StopServer},
     App, HttpRequest, HttpResponse,
 };
+use failure::{format_err, Error};
 use futures::Future;
 use std::{net::SocketAddr, rc::Rc};
 
@@ -30,7 +31,7 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
+pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> Result<TestServer, Error> {
     let (tx, rx) = crate::channel::unbounded();
     let (tx_req, rx_req) = crate::channel::unbounded();
 
@@ -43,7 +44,7 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
                 .boxed()]
         })
         .bind(SocketAddr::from(([127, 0, 0, 1], port)))
-        .expect("Failed to bind");
+        .expect("Failed to bind!");
 
         let sockets = server.addrs();
         let addr = server.shutdown_timeout(0).start();
@@ -52,14 +53,16 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
         let _ = sys.run();
     });
 
-    let (addr, sockets) = rx.recv().expect("Failed to receive instance addr");
-    let socket = sockets.get(0).expect("Failed to get bound socket");
+    let (addr, sockets) = rx.recv()?;
+    let socket = sockets
+        .get(0)
+        .ok_or_else(|| format_err!("Failed to get socket addr!"))?;
 
-    TestServer {
+    Ok(TestServer {
         addr: Rc::new(addr),
         requests: Rc::new(RequestReceiver {
             rx: Rc::new(rx_req),
         }),
         socket: Rc::new(*socket),
-    }
+    })
 }

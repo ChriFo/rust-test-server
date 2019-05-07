@@ -1,9 +1,7 @@
+use failure::Error;
 pub use rand::random;
 use rand::{self, distributions::Alphanumeric, Rng};
-use std::{
-    fs::File,
-    io::{Read, Result},
-};
+use std::{fs::File, io::Read};
 
 /// Generates a random string with given size.
 pub fn random_string(size: usize) -> String {
@@ -14,7 +12,7 @@ pub fn random_string(size: usize) -> String {
 }
 
 /// Reads file content into string result.
-pub fn read_file(file: &str) -> Result<String> {
+pub fn read_file(file: &str) -> Result<String, Error> {
     let mut file = File::open(file)?;
     let mut content = String::new();
     let _ = file.read_to_string(&mut content);
