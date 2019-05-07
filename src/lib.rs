@@ -5,6 +5,10 @@
 #![warn(dead_code)]
 #![warn(missing_copy_implementations)]
 
+#[cfg(test)]
+#[macro_use]
+extern crate log;
+
 pub use crate::requests::{Request, RequestReceiver};
 pub use crate::server::{new, TestServer};
 pub use actix_web::{HttpRequest, HttpResponse};
