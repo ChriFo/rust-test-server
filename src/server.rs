@@ -1,15 +1,17 @@
 use crate::requests::{RequestReceiver, ShareRequest};
 use actix_net::server::Server;
-use actix_web::actix::{Addr, System};
-use actix_web::server::{self, StopServer};
-use actix_web::{App, HttpRequest, HttpResponse};
+use actix_web::{
+    actix::{Addr, System},
+    server::{self, StopServer},
+    App, HttpRequest, HttpResponse,
+};
 use futures::Future;
-use std::net::{IpAddr, SocketAddr};
+use std::{net::SocketAddr, rc::Rc};
 
 pub struct TestServer {
-    addr: Addr<Server>,
-    pub requests: RequestReceiver,
-    socket: (IpAddr, u16),
+    addr: Rc<Addr<Server>>,
+    pub requests: Rc<RequestReceiver>,
+    socket: Rc<SocketAddr>,
 }
 
 impl TestServer {
@@ -18,7 +20,7 @@ impl TestServer {
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}:{}", self.socket.0, self.socket.1)
+        format!("http://{}", self.socket.to_string())
     }
 }
 
@@ -54,8 +56,10 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
     let socket = sockets.get(0).expect("Failed to get bound socket");
 
     TestServer {
-        addr,
-        requests: RequestReceiver { rx: rx_req },
-        socket: (socket.ip(), socket.port()),
+        addr: Rc::new(addr),
+        requests: Rc::new(RequestReceiver {
+            rx: Rc::new(rx_req),
+        }),
+        socket: Rc::new(*socket),
     }
 }
