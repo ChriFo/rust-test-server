@@ -15,21 +15,20 @@ test-server = { git = "https://github.com/ChriFo/test-server-rs", tag = "0.5.6" 
 [HttpResponse](https://actix.rs/api/actix-web/stable/actix_web/struct.HttpResponse.html) and [HttpRequest](https://actix.rs/api/actix-web/stable/actix_web/struct.HttpRequest.html) are re-exports from [actix-web](https://github.com/actix/actix-web).
 
 ```rust
-extern crate test_server;
-
+use failure::Error;
 use test_server::HttpResponse;
 
 #[test]
-fn example_test() {
+fn example_test() -> Result<(), Error> {
     // start server at random port
-    let _ = test_server::new(0, |_| HttpResponse::Ok().into());
+    let _ = test_server::new(0, |_| HttpResponse::Ok().into())?;
 
     // start server at given port
     let server = test_server::new(8080, |req| {
         println!("Request: {:#?}", req);
         // req.body is only available via server.requests
         HttpResponse::Ok().body("hello world")
-    });
+    })?;
 
     // request against server
     let _ = client::get(&server.url());
@@ -41,6 +40,8 @@ fn example_test() {
     assert_eq!("GET", last_request.method);
     assert_eq!("/", last_request.path);
     // body, headers and query params are also available
+
+    Ok(())
 }
 ```
 

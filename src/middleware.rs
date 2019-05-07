@@ -26,7 +26,7 @@ impl<S> Middleware<S> for ShareRequest {
             })
             .and_then(move |body| {
                 let _ = tx.send(Request {
-                    body: String::from_utf8(body.to_vec()).expect("Failed to extract request body"),
+                    body: String::from_utf8(body.to_vec()).unwrap_or_default(),
                     headers,
                     method,
                     path,
@@ -42,14 +42,7 @@ impl<S> Middleware<S> for ShareRequest {
 fn extract_headers<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
     req.headers()
         .iter()
-        .map(|(k, v)| {
-            (
-                k.as_str().to_string(),
-                v.to_str()
-                    .expect("Failed to convert header value")
-                    .to_string(),
-            )
-        })
+        .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
         .collect::<HashMap<_, _>>()
 }
 

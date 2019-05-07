@@ -1,15 +1,18 @@
 use crate::requests::{RequestReceiver, ShareRequest};
 use actix_net::server::Server;
-use actix_web::actix::{Addr, System};
-use actix_web::server::{self, StopServer};
-use actix_web::{App, HttpRequest, HttpResponse};
+use actix_web::{
+    actix::{Addr, System},
+    server::{self, StopServer},
+    App, HttpRequest, HttpResponse,
+};
+use failure::{format_err, Error};
 use futures::Future;
-use std::net::{IpAddr, SocketAddr};
+use std::{net::SocketAddr, rc::Rc};
 
 pub struct TestServer {
-    addr: Addr<Server>,
-    pub requests: RequestReceiver,
-    socket: (IpAddr, u16),
+    addr: Rc<Addr<Server>>,
+    pub requests: Rc<RequestReceiver>,
+    socket: Rc<SocketAddr>,
 }
 
 impl TestServer {
@@ -18,7 +21,7 @@ impl TestServer {
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}:{}", self.socket.0, self.socket.1)
+        format!("http://{}", self.socket.to_string())
     }
 }
 
@@ -28,7 +31,7 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
+pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> Result<TestServer, Error> {
     let (tx, rx) = crate::channel::unbounded();
     let (tx_req, rx_req) = crate::channel::unbounded();
 
@@ -41,7 +44,7 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
                 .boxed()]
         })
         .bind(SocketAddr::from(([127, 0, 0, 1], port)))
-        .expect("Failed to bind");
+        .expect("Failed to bind!");
 
         let sockets = server.addrs();
         let addr = server.shutdown_timeout(0).start();
@@ -50,12 +53,16 @@ pub fn new(port: u16, func: fn(&HttpRequest) -> HttpResponse) -> TestServer {
         let _ = sys.run();
     });
 
-    let (addr, sockets) = rx.recv().expect("Failed to receive instance addr");
-    let socket = sockets.get(0).expect("Failed to get bound socket");
+    let (addr, sockets) = rx.recv()?;
+    let socket = sockets
+        .get(0)
+        .ok_or_else(|| format_err!("Failed to get socket addr!"))?;
 
-    TestServer {
-        addr,
-        requests: RequestReceiver { rx: rx_req },
-        socket: (socket.ip(), socket.port()),
-    }
+    Ok(TestServer {
+        addr: Rc::new(addr),
+        requests: Rc::new(RequestReceiver {
+            rx: Rc::new(rx_req),
+        }),
+        socket: Rc::new(*socket),
+    })
 }
