@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+* library maintenance
+* update dependencies
+
 ## 0.5.6
 * remove extern crates
 
