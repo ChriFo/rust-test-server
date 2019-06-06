@@ -1,4 +1,4 @@
-use crate::server::{helper, HttpResponse, Request};
+use crate::server::{helper, HttpMessage, HttpResponse, PayloadError, Request};
 use failure::Error;
 use reqwest::StatusCode;
 use test_server as server;
@@ -35,7 +35,9 @@ fn restart_server_at_same_port() -> Result<(), Error> {
 
 #[test]
 fn validate_client_request() -> Result<(), Error> {
-    let server = server::new(0, |_| HttpResponse::Ok().into())?;
+    let server = server::new(0, |req| {
+        HttpResponse::Ok().streaming(req.take_payload().into())
+    })?;
 
     let request_content = helper::random_string(100);
     let client = reqwest::Client::new();

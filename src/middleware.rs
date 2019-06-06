@@ -1,58 +1,108 @@
+use crate::channel::Sender;
 use crate::requests::{Request, ShareRequest};
+use actix_http::{error::PayloadError, httpmessage::HttpMessage, Payload};
+use actix_service::{Service, Transform};
 use actix_web::{
-    middleware::{Middleware, Started},
-    Error, HttpMessage, HttpRequest, Result,
+    dev::{ServiceRequest, ServiceResponse},
+    http::header::HeaderMap,
+    Error,
 };
-use bytes::BytesMut;
-use futures::{Future, Stream};
+use futures::future::{ok, FutureResult};
+use futures::{Future, Poll, Stream};
 use std::collections::HashMap;
 
-impl<S> Middleware<S> for ShareRequest {
-    fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
+pub struct ShareRequestMiddleware<S> {
+    service: S,
+    tx: Sender<Request>,
+}
+
+impl<S, B> Transform<S> for ShareRequest
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S::Future: 'static,
+    S::Error: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type InitError = ();
+    type Transform = ShareRequestMiddleware<S>;
+    type Future = FutureResult<Self::Transform, Self::InitError>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ok(ShareRequestMiddleware {
+            service,
+            tx: self.tx.clone(),
+        })
+    }
+}
+
+impl<S, B> Service for ShareRequestMiddleware<S>
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+
+    fn poll_ready(&mut self) -> Poll<(), Self::Error> {
+        self.service.poll_ready()
+    }
+
+    fn call(&mut self, mut req: ServiceRequest) -> Self::Future {
         let tx = self.tx.clone();
 
-        let headers = extract_headers(req);
-        let query = extract_query(req);
+        let headers = extract_headers(req.headers());
+        let query = extract_query(req.query_string());
 
         let method = req.method().to_string();
         let path = req.path().to_string();
 
-        let fut = req
-            .payload()
-            .from_err()
-            .fold(BytesMut::new(), |mut body, chunk| -> Result<_, Error> {
+        let send_body = req
+            .take_payload()
+            .fold(bytes::BytesMut::new(), move |mut body, chunk| {
                 body.extend_from_slice(&chunk);
-                Ok(body)
+                Ok::<_, PayloadError>(body)
             })
-            .and_then(move |body| {
+            .and_then(move |bytes| {
+                let b = bytes.freeze();
                 let _ = tx.send(Request {
-                    body: String::from_utf8(body.to_vec()).unwrap_or_default(),
+                    body: String::from_utf8_lossy(&b.to_vec()).to_string(),
                     headers,
                     method,
                     path,
                     query,
                 });
-                Ok(None)
+
+                Ok(b)
             });
 
-        Ok(Started::Future(Box::new(fut)))
+        req.set_payload(Payload::Stream(Box::new(send_body.into_stream())));
+
+        Box::new(self.service.call(req))
     }
 }
 
-fn extract_headers<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
-    req.headers()
+fn extract_headers(headers: &HeaderMap) -> HashMap<String, String> {
+    headers
         .iter()
         .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
         .collect::<HashMap<_, _>>()
 }
 
-fn extract_query<S>(req: &HttpRequest<S>) -> HashMap<String, String> {
-    req.query()
-        .iter()
-        .map(|(k, v)| (k.as_str().to_string(), v.clone()))
-        .collect::<HashMap<_, _>>()
+fn extract_query(query: &str) -> HashMap<String, String> {
+    match serde_urlencoded::from_str::<HashMap<String, String>>(query) {
+        Ok(tuples) => tuples,
+        Err(_why) => HashMap::new(),
+    }
 }
 
+//TODO: https://docs.rs/actix-web/1.0.2/actix_web/test/index.html
+/*
 #[test]
 #[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn test_middleware() {
@@ -73,3 +123,4 @@ fn test_middleware() {
 
     assert!(request.is_ok());
 }
+*/

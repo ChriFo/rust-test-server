@@ -1,3 +1,4 @@
+use crate::channel::Sender;
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug)]
@@ -29,7 +30,13 @@ impl RequestReceiver {
 }
 
 pub(crate) struct ShareRequest {
-    pub(crate) tx: crate::channel::Sender<Request>,
+    pub tx: Sender<Request>,
+}
+
+impl ShareRequest {
+    pub fn new(tx: Sender<Request>) -> Self {
+        ShareRequest { tx }
+    }
 }
 
 #[cfg(test)]
