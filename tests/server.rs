@@ -1,6 +1,6 @@
-use crate::server::{helper, HttpMessage, HttpResponse, PayloadError, Request};
+use crate::server::{helper, HttpMessage, HttpResponse, Request};
 use failure::Error;
-use reqwest::StatusCode;
+use reqwest::{Client, StatusCode};
 use test_server as server;
 
 #[test]
@@ -35,15 +35,12 @@ fn restart_server_at_same_port() -> Result<(), Error> {
 
 #[test]
 fn validate_client_request() -> Result<(), Error> {
-    let server = server::new(0, |req| {
-        HttpResponse::Ok().streaming(req.take_payload().into())
-    })?;
+    let server = server::new(0, |_| HttpResponse::Ok().into())?;
 
     let request_content = helper::random_string(100);
-    let client = reqwest::Client::new();
-    let _ = client
+    let _ = Client::new()
         .post(&server.url())
-        .body(request_content.clone())
+        .body(request_content.to_owned())
         .send();
 
     assert_eq!(server.requests.len(), 1);
@@ -69,6 +66,34 @@ fn validate_client_request() -> Result<(), Error> {
 }
 
 #[test]
+fn validate_client_response() -> Result<(), Error> {
+    let server = server::new(0, |req| {
+        HttpResponse::Ok().streaming(
+            actix_web::dev::ServiceRequest::from_request(req)
+                .unwrap()
+                .into_parts()
+                .1,
+        )
+        //HttpResponse::Ok().streaming(req.take_payload().into())
+    })?;
+
+    let request_content = helper::random_string(100);
+    let response = Client::new()
+        .post(&server.url())
+        .body(request_content.to_owned())
+        .send();
+
+    assert!(response.is_ok());
+
+    let mut response = response?;
+    assert_eq!(response.text()?, request_content);
+    assert_eq!(response.content_length(), Some(100));
+    assert_eq!(response.status(), StatusCode::OK);
+
+    Ok(())
+}
+
+#[test]
 fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
     let server = server::new(0, |_| {
         let content = helper::read_file("tests/sample.json").unwrap();
@@ -89,7 +114,7 @@ fn fetch_2nd_request_from_server() -> Result<(), Error> {
     let server = server::new(0, |_| HttpResponse::Ok().into())?;
 
     let _ = reqwest::get(&server.url()).unwrap();
-    let _ = reqwest::Client::new().post(&server.url()).body("2").send();
+    let _ = Client::new().post(&server.url()).body("2").send();
 
     assert_eq!(server.requests.len(), 2);
 

@@ -8,22 +8,22 @@ publish = false
 edition = "2018"
 
 [dependencies]
-actix-http = "0.2.4"
-actix-rt = "0.2.3"
-actix-service = "0.4.1"
+actix-http = "0.2.10"
+actix-rt = "0.2.5"
+actix-service = "0.4.2"
 bytes = "0.4.12"
-crossbeam-channel = "0.3.8"
-failure = "0.1.5"
-futures = "0.1.27"
-rand = "0.6.5"
-serde_urlencoded = "0.5.5"
+crossbeam-channel = "0.3.9"
+failure = "0.1.6"
+futures = "0.1.29"
+rand = "0.7.2"
+serde_urlencoded = "0.6.1"
 tokio-current-thread = "0.1.6"
 
 [dependencies.actix-web]
-version = "1.0.2"
+version = "1.0.8"
 default-features = false
 
 [dev-dependencies]
-log = "0.4.6"
-reqwest = "0.9.18"
+log = "0.4.8"
+reqwest = "0.9.22"
 spectral = "0.6.0"

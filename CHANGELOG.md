@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+* use actix_web 1.0
+* update dependencies
+
 ## 0.6.0
 * library maintenance
 * use failure crate and return results
@@ -9,7 +13,7 @@
 * remove extern crates
 
 ## 0.5.5
-* switch to edition "2018" 
+* switch to edition "2018"
 * update dependencies
 
 ## 0.5.3/0.5.4
@@ -23,7 +27,7 @@
 * adjust imports and mod naming
 
 ## 0.5.0
-* replace static mutex vector of requests by a crossbeam-channel based implementation 
+* replace static mutex vector of requests by a crossbeam-channel based implementation
 * adjust API and mod structure
 * update dependencies
 * add cargo audit test to CI
@@ -36,7 +40,7 @@
 * remove TestServer::received_request()
 * add TestServer::requests() returning all requests in vector
 
-## 0.2.4 
+## 0.2.4
 * upgrade to [actix-web](https://github.com/actix/actix-web) version 0.7.2
 * restructure lib
 * [clippy](https://github.com/rust-lang-nursery/rust-clippy) compliance
@@ -57,7 +61,7 @@
 * reimplement server with [actix-web](https://github.com/actix/actix-web)
 
 ## 0.1.1
-* fix retreiving of requests 
+* fix retreiving of requests
 
 ## 0.1.0
 * first version based on [iron](https://github.com/iron/iron)

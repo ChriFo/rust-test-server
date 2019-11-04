@@ -1,26 +1,22 @@
 use crate::channel::Sender;
 use crate::requests::{Request, ShareRequest};
-use actix_http::{error::PayloadError, httpmessage::HttpMessage, Payload};
+use actix_http::{error::PayloadError, httpmessage::HttpMessage};
 use actix_service::{Service, Transform};
 use actix_web::{
     dev::{ServiceRequest, ServiceResponse},
     http::header::HeaderMap,
     Error,
 };
-use futures::future::{ok, FutureResult};
-use futures::{Future, Poll, Stream};
-use std::collections::HashMap;
+use futures::{
+    future::{ok, FutureResult},
+    Future, Poll, Stream,
+};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-pub struct ShareRequestMiddleware<S> {
-    service: S,
-    tx: Sender<Request>,
-}
-
-impl<S, B> Transform<S> for ShareRequest
+impl<S: 'static, B> Transform<S> for ShareRequest
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
-    S::Error: 'static,
     B: 'static,
 {
     type Request = ServiceRequest;
@@ -32,10 +28,15 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ok(ShareRequestMiddleware {
-            service,
+            service: Rc::new(RefCell::new(service)),
             tx: self.tx.clone(),
         })
     }
+}
+
+pub struct ShareRequestMiddleware<S> {
+    service: Rc<RefCell<S>>,
+    tx: Sender<Request>,
 }
 
 impl<S, B> Service for ShareRequestMiddleware<S>
@@ -47,13 +48,14 @@ where
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<dyn Future<Item = Self::Response, Error = Self::Error>>;
 
     fn poll_ready(&mut self) -> Poll<(), Self::Error> {
         self.service.poll_ready()
     }
 
     fn call(&mut self, mut req: ServiceRequest) -> Self::Future {
+        let mut svc = self.service.clone();
         let tx = self.tx.clone();
 
         let headers = extract_headers(req.headers());
@@ -62,28 +64,26 @@ where
         let method = req.method().to_string();
         let path = req.path().to_string();
 
-        let send_body = req
-            .take_payload()
-            .fold(bytes::BytesMut::new(), move |mut body, chunk| {
-                body.extend_from_slice(&chunk);
-                Ok::<_, PayloadError>(body)
-            })
-            .and_then(move |bytes| {
-                let b = bytes.freeze();
-                let _ = tx.send(Request {
-                    body: String::from_utf8_lossy(&b.to_vec()).to_string(),
-                    headers,
-                    method,
-                    path,
-                    query,
-                });
+        Box::new(
+            req.take_payload()
+                .fold(bytes::BytesMut::new(), move |mut body, chunk| {
+                    body.extend_from_slice(&chunk);
+                    Ok::<_, PayloadError>(body)
+                })
+                .map_err(|e| e.into())
+                .and_then(move |bytes| {
+                    let body = bytes.freeze();
+                    let _ = tx.send(Request {
+                        body: String::from_utf8_lossy(&body.to_vec()).to_string(),
+                        headers,
+                        method,
+                        path,
+                        query,
+                    });
 
-                Ok(b)
-            });
-
-        req.set_payload(Payload::Stream(Box::new(send_body.into_stream())));
-
-        Box::new(self.service.call(req))
+                    svc.call(req).and_then(Ok)
+                }),
+        )
     }
 }
 
