@@ -17,7 +17,6 @@ failure = "0.1.6"
 futures = "0.1.29"
 rand = "0.7.2"
 serde_urlencoded = "0.6.1"
-tokio-current-thread = "0.1.6"
 
 [dependencies.actix-web]
 version = "1.0.8"
