@@ -103,26 +103,35 @@ fn extract_query(query: &str) -> HashMap<String, String> {
     }
 }
 
-//TODO: https://docs.rs/actix-web/1.0.2/actix_web/test/index.html
-/*
-#[test]
-#[cfg(not(target_os = "windows"))] // carllerche/mio#776
-fn test_middleware() {
-    let (tx, rx) = crate::channel::unbounded();
+#[cfg(test)]
+mod tests {
 
-    let mut srv = ::actix_web::test::TestServer::new(move |app| {
-        app.middleware(ShareRequest { tx: tx.clone() })
-            .handler(|_| ::actix_web::HttpResponse::Ok())
-    });
+    use super::*;
+    use actix_web::{
+        test::{call_service, init_service, read_body, TestRequest},
+        web::{route, Payload},
+        App, HttpResponse,
+    };
 
-    let request = srv.get().finish().unwrap();
-    let response = srv.execute(request.send()).unwrap();
+    #[test]
+    fn test_middleware() -> Result<(), Error> {
+        let (tx, rx) = crate::channel::unbounded();
 
-    assert!(response.status().is_success());
-    assert_eq!(rx.len(), 1);
+        let mut app =
+            init_service(App::new().wrap(ShareRequest { tx }).default_service(
+                route().to(|payload: Payload| HttpResponse::Ok().streaming(payload)),
+            ));
 
-    let request: Result<Request, crate::channel::RecvError> = rx.recv();
+        let payload = "hello world";
 
-    assert!(request.is_ok());
+        let req = TestRequest::default().set_payload(payload).to_request();
+        let res = call_service(&mut app, req);
+
+        assert_eq!(read_body(res), payload);
+
+        assert_eq!(rx.len(), 1);
+        assert_eq!(rx.recv().unwrap().body, payload);
+
+        Ok(())
+    }
 }
-*/

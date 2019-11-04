@@ -9,7 +9,7 @@ fn start_server_at_given_port() -> Result<(), Error> {
 
     assert!(&server.url().contains(":65432"));
 
-    let response = reqwest::get(&server.url()).unwrap();
+    let response = reqwest::get(&server.url())?;
 
     assert_eq!(StatusCode::OK, response.status());
 
@@ -17,16 +17,15 @@ fn start_server_at_given_port() -> Result<(), Error> {
 }
 
 #[test]
-#[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn restart_server_at_same_port() -> Result<(), Error> {
     let mut server = server::new(65433, HttpResponse::Ok)?;
-    let response = reqwest::get(&server.url()).unwrap();
+    let response = reqwest::get(&server.url())?;
 
     assert_eq!(StatusCode::OK, response.status());
 
     server.stop();
     server = server::new(65433, HttpResponse::BadRequest)?;
-    let response = reqwest::get(&server.url()).unwrap();
+    let response = reqwest::get(&server.url())?;
 
     assert_eq!(StatusCode::BAD_REQUEST, response.status());
 
@@ -90,12 +89,9 @@ fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
         let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content)
     })?;
-    let mut response = reqwest::get(&server.url()).unwrap();
+    let mut response = reqwest::get(&server.url())?;
 
-    assert_eq!(
-        helper::read_file("tests/sample.json").unwrap(),
-        response.text().unwrap()
-    );
+    assert_eq!(helper::read_file("tests/sample.json")?, response.text()?);
 
     Ok(())
 }
@@ -104,7 +100,7 @@ fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
 fn fetch_2nd_request_from_server() -> Result<(), Error> {
     let server = server::new(0, HttpResponse::Ok)?;
 
-    let _ = reqwest::get(&server.url()).unwrap();
+    let _ = reqwest::get(&server.url())?;
     let _ = Client::new().post(&server.url()).body("2").send();
 
     assert_eq!(server.requests.len(), 2);

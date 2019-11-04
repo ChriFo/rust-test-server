@@ -13,7 +13,7 @@ pub use crate::requests::{Request, RequestReceiver};
 pub use crate::server::{new, TestServer};
 pub use actix_http::{error::PayloadError, httpmessage::HttpMessage};
 pub use actix_web::{web::Payload, HttpRequest, HttpResponse};
-use crossbeam_channel as channel;
+use crossbeam::channel;
 
 pub mod helper;
 mod middleware;
