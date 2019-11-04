@@ -1,5 +1,5 @@
 use crate::requests::{RequestReceiver, ShareRequest};
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Result};
+use actix_web::{dev::Factory, web, App, FromRequest, HttpServer, Responder, Result};
 use failure::{format_err, Error};
 use futures::Future;
 use std::{net::SocketAddr, rc::Rc};
@@ -26,7 +26,12 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new(port: u16, func: fn(req: HttpRequest) -> HttpResponse) -> Result<TestServer, Error> {
+pub fn new<F, T, R>(port: u16, func: F) -> Result<TestServer, Error>
+where
+    F: Factory<T, R> + 'static + Send + Copy,
+    T: FromRequest + 'static,
+    R: Responder + 'static,
+{
     let (tx, rx) = crate::channel::unbounded();
     let (tx_req, rx_req) = crate::channel::unbounded();
 

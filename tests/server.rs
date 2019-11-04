@@ -1,11 +1,11 @@
-use crate::server::{helper, HttpMessage, HttpResponse, Request};
+use crate::server::{helper, HttpResponse, Payload, Request};
 use failure::Error;
 use reqwest::{Client, StatusCode};
 use test_server as server;
 
 #[test]
 fn start_server_at_given_port() -> Result<(), Error> {
-    let server = server::new(65432, |_| HttpResponse::Ok().into())?;
+    let server = server::new(65432, HttpResponse::Ok)?;
 
     assert!(&server.url().contains(":65432"));
 
@@ -19,13 +19,13 @@ fn start_server_at_given_port() -> Result<(), Error> {
 #[test]
 #[cfg(not(target_os = "windows"))] // carllerche/mio#776
 fn restart_server_at_same_port() -> Result<(), Error> {
-    let mut server = server::new(65433, |_| HttpResponse::Ok().into())?;
+    let mut server = server::new(65433, HttpResponse::Ok)?;
     let response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(StatusCode::OK, response.status());
 
     server.stop();
-    server = server::new(65433, |_| HttpResponse::BadRequest().into())?;
+    server = server::new(65433, HttpResponse::BadRequest)?;
     let response = reqwest::get(&server.url()).unwrap();
 
     assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -35,7 +35,7 @@ fn restart_server_at_same_port() -> Result<(), Error> {
 
 #[test]
 fn validate_client_request() -> Result<(), Error> {
-    let server = server::new(0, |_| HttpResponse::Ok().into())?;
+    let server = server::new(0, HttpResponse::Ok)?;
 
     let request_content = helper::random_string(100);
     let _ = Client::new()
@@ -67,15 +67,7 @@ fn validate_client_request() -> Result<(), Error> {
 
 #[test]
 fn validate_client_response() -> Result<(), Error> {
-    let server = server::new(0, |req| {
-        HttpResponse::Ok().streaming(
-            actix_web::dev::ServiceRequest::from_request(req)
-                .unwrap()
-                .into_parts()
-                .1,
-        )
-        //HttpResponse::Ok().streaming(req.take_payload().into())
-    })?;
+    let server = server::new(0, |payload: Payload| HttpResponse::Ok().streaming(payload))?;
 
     let request_content = helper::random_string(100);
     let response = Client::new()
@@ -87,7 +79,6 @@ fn validate_client_response() -> Result<(), Error> {
 
     let mut response = response?;
     assert_eq!(response.text()?, request_content);
-    assert_eq!(response.content_length(), Some(100));
     assert_eq!(response.status(), StatusCode::OK);
 
     Ok(())
@@ -95,7 +86,7 @@ fn validate_client_response() -> Result<(), Error> {
 
 #[test]
 fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
-    let server = server::new(0, |_| {
+    let server = server::new(0, || {
         let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content)
     })?;
@@ -111,7 +102,7 @@ fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
 
 #[test]
 fn fetch_2nd_request_from_server() -> Result<(), Error> {
-    let server = server::new(0, |_| HttpResponse::Ok().into())?;
+    let server = server::new(0, HttpResponse::Ok)?;
 
     let _ = reqwest::get(&server.url()).unwrap();
     let _ = Client::new().post(&server.url()).body("2").send();

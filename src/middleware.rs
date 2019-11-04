@@ -1,6 +1,6 @@
 use crate::channel::Sender;
 use crate::requests::{Request, ShareRequest};
-use actix_http::{error::PayloadError, httpmessage::HttpMessage};
+use actix_http::{error::PayloadError, httpmessage::HttpMessage, Payload};
 use actix_service::{Service, Transform};
 use actix_web::{
     dev::{ServiceRequest, ServiceResponse},
@@ -9,7 +9,7 @@ use actix_web::{
 };
 use futures::{
     future::{ok, FutureResult},
-    Future, Poll, Stream,
+    stream, Future, Poll, Stream,
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
@@ -80,6 +80,8 @@ where
                         path,
                         query,
                     });
+
+                    req.set_payload(Payload::Stream(Box::new(stream::once(Ok(body)))));
 
                     svc.call(req).and_then(Ok)
                 }),

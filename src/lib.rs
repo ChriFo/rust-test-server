@@ -12,7 +12,7 @@ extern crate log;
 pub use crate::requests::{Request, RequestReceiver};
 pub use crate::server::{new, TestServer};
 pub use actix_http::{error::PayloadError, httpmessage::HttpMessage};
-pub use actix_web::{HttpRequest, HttpResponse};
+pub use actix_web::{web::Payload, HttpRequest, HttpResponse};
 use crossbeam_channel as channel;
 
 pub mod helper;

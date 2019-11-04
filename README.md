@@ -16,17 +16,16 @@ test-server = { git = "https://github.com/ChriFo/test-server-rs", tag = "0.6.0" 
 
 ```rust
 use failure::Error;
-use test_server::HttpResponse;
+use test_server::{HttpRequest, HttpResponse};
 
 #[test]
 fn example_test() -> Result<(), Error> {
     // start server at random port
-    let _ = test_server::new(0, |_| HttpResponse::Ok().into())?;
+    let _ = test_server::new(0, HttpResponse::Ok)?;
 
     // start server at given port
-    let server = test_server::new(8080, |req| {
+    let server = test_server::new(8080, |req: HttpRequest| {
         println!("Request: {:#?}", req);
-        // req.body is only available via server.requests
         HttpResponse::Ok().body("hello world")
     })?;
 
@@ -35,7 +34,7 @@ fn example_test() -> Result<(), Error> {
 
     assert_eq!(1, server.requests.len());
 
-    let last_request = server.requests.next().unwrap(); 
+    let last_request = server.requests.next().unwrap();
 
     assert_eq!("GET", last_request.method);
     assert_eq!("/", last_request.path);
