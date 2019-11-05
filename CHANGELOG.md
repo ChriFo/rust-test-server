@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 * use actix_web 1.0
 * update dependencies
 
