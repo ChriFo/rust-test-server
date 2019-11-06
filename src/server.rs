@@ -12,7 +12,7 @@ pub struct TestServer {
 
 impl TestServer {
     pub fn stop(&self) {
-        let _ = self.instance.stop(true).wait();
+        let _ = self.instance.stop(false).wait();
     }
 
     pub fn url(&self) -> String {
@@ -47,7 +47,7 @@ where
         .expect("Failed to bind!");
 
         let sockets = server.addrs();
-        let instance = server.shutdown_timeout(0).start();
+        let instance = server.shutdown_timeout(1).start();
         let _ = tx.clone().send((instance, sockets));
 
         sys.run()

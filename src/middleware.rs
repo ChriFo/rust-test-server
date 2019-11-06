@@ -99,7 +99,11 @@ fn extract_headers(headers: &HeaderMap) -> HashMap<String, String> {
 fn extract_query(query: &str) -> HashMap<String, String> {
     match serde_urlencoded::from_str::<HashMap<String, String>>(query) {
         Ok(tuples) => tuples,
-        Err(_why) => HashMap::new(),
+        Err(why) => {
+            error!("Failed to extract Query");
+            debug!("{}", why);
+            HashMap::new()
+        }
     }
 }
 

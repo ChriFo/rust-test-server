@@ -8,13 +8,14 @@ publish = false
 edition = "2018"
 
 [dependencies]
-actix-http = "0.2.10"
+actix-http = "0.2.11"
 actix-rt = "0.2.5"
 actix-service = "0.4.2"
 bytes = "0.4.12"
-crossbeam = "0.7.2"
+crossbeam = "0.7.3"
 failure = "0.1.6"
 futures = "0.1.29"
+log = "0.4.8"
 rand = "0.7.2"
 serde_urlencoded = "0.6.1"
 
@@ -24,6 +25,5 @@ default-features = false
 
 [dev-dependencies]
 actix-http-test = "0.2.5"
-log = "0.4.8"
-reqwest = "0.9.22"
 spectral = "0.6.0"
+ureq = "0.11.2"

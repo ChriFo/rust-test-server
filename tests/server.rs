@@ -1,6 +1,5 @@
 use crate::server::{helper, HttpResponse, Payload, Request};
 use failure::Error;
-use reqwest::{Client, StatusCode};
 use test_server as server;
 
 #[test]
@@ -9,25 +8,30 @@ fn start_server_at_given_port() -> Result<(), Error> {
 
     assert!(&server.url().contains(":65432"));
 
-    let response = reqwest::get(&server.url())?;
+    let response = ureq::get(&server.url()).call();
 
-    assert_eq!(StatusCode::OK, response.status());
+    assert!(response.ok());
 
     Ok(())
 }
 
 #[test]
+#[cfg(not(target_os = "windows"))] // known issue of Windows
 fn restart_server_at_same_port() -> Result<(), Error> {
-    let mut server = server::new(65433, HttpResponse::Ok)?;
-    let response = reqwest::get(&server.url())?;
+    {
+        let server = server::new(65433, HttpResponse::Ok)?;
+        let response = ureq::get(&server.url()).call();
 
-    assert_eq!(StatusCode::OK, response.status());
+        assert!(response.ok());
 
-    server.stop();
-    server = server::new(65433, HttpResponse::BadRequest)?;
-    let response = reqwest::get(&server.url())?;
+        server.stop();
+    }
+    {
+        let server = server::new(65433, HttpResponse::BadRequest)?;
+        let response = ureq::get(&server.url()).call();
 
-    assert_eq!(StatusCode::BAD_REQUEST, response.status());
+        assert!(response.client_error());
+    }
 
     Ok(())
 }
@@ -37,10 +41,7 @@ fn validate_client_request() -> Result<(), Error> {
     let server = server::new(0, HttpResponse::Ok)?;
 
     let request_content = helper::random_string(100);
-    let _ = Client::new()
-        .post(&server.url())
-        .body(request_content.to_owned())
-        .send();
+    let _ = ureq::post(&server.url()).send_string(&request_content);
 
     assert_eq!(server.requests.len(), 1);
 
@@ -69,16 +70,10 @@ fn validate_client_response() -> Result<(), Error> {
     let server = server::new(0, |payload: Payload| HttpResponse::Ok().streaming(payload))?;
 
     let request_content = helper::random_string(100);
-    let response = Client::new()
-        .post(&server.url())
-        .body(request_content.to_owned())
-        .send();
+    let response = ureq::post(&server.url()).send_string(&request_content);
 
-    assert!(response.is_ok());
-
-    let mut response = response?;
-    assert_eq!(response.text()?, request_content);
-    assert_eq!(response.status(), StatusCode::OK);
+    assert!(response.ok());
+    assert_eq!(response.into_string()?, request_content);
 
     Ok(())
 }
@@ -89,9 +84,12 @@ fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
         let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content)
     })?;
-    let mut response = reqwest::get(&server.url())?;
+    let response = ureq::get(&server.url()).call();
 
-    assert_eq!(helper::read_file("tests/sample.json")?, response.text()?);
+    assert_eq!(
+        helper::read_file("tests/sample.json")?,
+        response.into_string()?
+    );
 
     Ok(())
 }
@@ -100,8 +98,8 @@ fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
 fn fetch_2nd_request_from_server() -> Result<(), Error> {
     let server = server::new(0, HttpResponse::Ok)?;
 
-    let _ = reqwest::get(&server.url())?;
-    let _ = Client::new().post(&server.url()).body("2").send();
+    let _ = ureq::get(&server.url()).call();
+    let _ = ureq::post(&server.url()).send_string("2");
 
     assert_eq!(server.requests.len(), 2);
 

@@ -1,9 +1,7 @@
 # (Integration) Test server
 
-![GitHub tag](https://img.shields.io/github/tag/ChriFo/test-server-rs.svg)
-[![Build Status](https://dev.azure.com/fochler/test-server-rs/_apis/build/status/ChriFo.test-server-rs)](https://dev.azure.com/fochler/test-server-rs/_build/latest?definitionId=1)
+[![Build Status](https://github.com/ChriFo/test-server-rs/workflows/Continuous%20Integration/badge.svg)](https://github.com/ChriFo/test-server-rs/actions)
 [![codecov](https://codecov.io/gh/ChriFo/test-server-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/ChriFo/test-server-rs)
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 ## Usage
 
