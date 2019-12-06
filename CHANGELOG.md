@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+* header function exports actix HeaderMap
+* update dependencies
+
 ## 0.7.0
 * use actix_web 1.0
 * update dependencies

@@ -9,7 +9,7 @@ edition = "2018"
 
 [dependencies]
 actix-http = "0.2.11"
-actix-rt = "0.2.5"
+actix-rt = "0.2.6"
 actix-service = "0.4.2"
 bytes = "0.4.12"
 crossbeam = "0.7.3"
@@ -20,7 +20,7 @@ rand = "0.7.2"
 serde_urlencoded = "0.6.1"
 
 [dependencies.actix-web]
-version = "1.0.8"
+version = "1.0.9"
 default-features = false
 
 [dev-dependencies]

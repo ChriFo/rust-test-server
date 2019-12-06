@@ -57,7 +57,10 @@ fn validate_client_request() -> Result<(), Error> {
     } = request.unwrap();
 
     assert_eq!(&request_content, body);
-    assert_eq!(Some(&String::from("100")), headers.get("content-length"));
+    assert_eq!(
+        &String::from("100"),
+        headers.get("content-length").unwrap().to_str()?
+    );
     assert_eq!("POST", method);
     assert_eq!("/", path);
     assert!(query.is_empty());

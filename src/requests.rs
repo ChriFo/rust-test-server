@@ -1,10 +1,11 @@
 use crate::channel::{Receiver, Sender};
+use actix_web::http::header::HeaderMap;
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug)]
 pub struct Request {
     pub body: String,
-    pub headers: HashMap<String, String>,
+    pub headers: HeaderMap,
     pub method: String,
     pub path: String,
     pub query: HashMap<String, String>,
@@ -84,7 +85,7 @@ mod tests {
     fn add_request(tx: crate::channel::Sender<Request>) {
         if let Err(err) = tx.send(Request {
             body: String::new(),
-            headers: HashMap::new(),
+            headers: HeaderMap::new(),
             method: String::new(),
             path: String::new(),
             query: HashMap::new(),

@@ -4,7 +4,6 @@ use actix_http::{error::PayloadError, httpmessage::HttpMessage, Payload};
 use actix_service::{Service, Transform};
 use actix_web::{
     dev::{ServiceRequest, ServiceResponse},
-    http::header::HeaderMap,
     Error,
 };
 use futures::{
@@ -58,7 +57,6 @@ where
         let mut svc = self.service.clone();
         let tx = self.tx.clone();
 
-        let headers = extract_headers(req.headers());
         let query = extract_query(req.query_string());
 
         let method = req.method().to_string();
@@ -75,7 +73,7 @@ where
                     let body = bytes.freeze();
                     let _ = tx.send(Request {
                         body: String::from_utf8_lossy(&body.to_vec()).to_string(),
-                        headers,
+                        headers: req.headers().clone(),
                         method,
                         path,
                         query,
@@ -87,13 +85,6 @@ where
                 }),
         )
     }
-}
-
-fn extract_headers(headers: &HeaderMap) -> HashMap<String, String> {
-    headers
-        .iter()
-        .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
-        .collect::<HashMap<_, _>>()
 }
 
 fn extract_query(query: &str) -> HashMap<String, String> {
