@@ -1,4 +1,10 @@
-use failure::Error;
+use actix_web::{
+    dev::MessageBody,
+    test::{block_on, run_on},
+    Error, HttpResponse,
+};
+use bytes::{Bytes, BytesMut};
+use futures::{future::Future, stream::Stream};
 pub use rand::random;
 use rand::{self, distributions::Alphanumeric, Rng};
 use std::{fs::File, io::Read};
@@ -12,11 +18,26 @@ pub fn random_string(size: usize) -> String {
 }
 
 /// Reads file content into string result.
-pub fn read_file(file: &str) -> Result<String, Error> {
+pub fn read_file(file: &str) -> Result<String, failure::Error> {
     let mut file = File::open(file)?;
     let mut content = String::new();
     let _ = file.read_to_string(&mut content);
     Ok(content)
+}
+
+pub fn read_body<B>(mut res: HttpResponse<B>) -> Bytes
+where
+    B: MessageBody,
+{
+    block_on(run_on(move || {
+        res.take_body()
+            .fold(BytesMut::new(), move |mut body, chunk| {
+                body.extend_from_slice(&chunk);
+                Ok::<_, Error>(body)
+            })
+            .map(|body: BytesMut| body.freeze())
+    }))
+    .unwrap_or_else(|_| panic!("read_response failed at block_on unwrap"))
 }
 
 #[cfg(test)]
