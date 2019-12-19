@@ -1,7 +1,7 @@
 use crate::requests::{RequestReceiver, ShareRequest};
 use actix_web::{dev::Factory, web, App, FromRequest, HttpServer, Responder, Result};
 use failure::{format_err, Error};
-use futures::Future;
+use futures::{executor::block_on, Future};
 use std::{net::SocketAddr, rc::Rc};
 
 pub struct TestServer {
@@ -12,7 +12,7 @@ pub struct TestServer {
 
 impl TestServer {
     pub fn stop(&self) {
-        let _ = self.instance.stop(false).wait();
+        block_on(self.instance.stop(false));
     }
 
     pub fn url(&self) -> String {
@@ -26,18 +26,18 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new<F, T, R>(port: u16, func: F) -> Result<TestServer, Error>
+pub fn new<F, T, R, U>(port: u16, func: F) -> Result<TestServer, Error>
 where
-    F: Factory<T, R> + 'static + Send + Copy,
+    F: Factory<T, R, U> + 'static + Send + Copy,
     T: FromRequest + 'static,
-    R: Responder + 'static,
+    R: Future<Output = U> + 'static,
+    U: Responder + 'static,
 {
     let (tx, rx) = crate::channel::unbounded();
     let (tx_req, rx_req) = crate::channel::unbounded();
 
     let _ = ::std::thread::spawn(move || {
         let sys = actix_rt::System::new("test-server");
-
         let server = HttpServer::new(move || {
             App::new()
                 .wrap(ShareRequest::new(tx_req.clone()))

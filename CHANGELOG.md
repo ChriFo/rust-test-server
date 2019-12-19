@@ -2,7 +2,7 @@
 
 ## Unreleased
 * header function exports actix HeaderMap
-* added helper function to read response body
+* added helper function to read response/request bodies
 * update dependencies
 
 ## 0.7.0

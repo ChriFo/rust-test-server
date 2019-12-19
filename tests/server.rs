@@ -26,6 +26,7 @@ fn restart_server_at_same_port() -> Result<(), Error> {
 
         server.stop();
     }
+
     {
         let server = server::new(65433, HttpResponse::BadRequest)?;
         let response = ureq::get(&server.url()).call();

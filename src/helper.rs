@@ -1,10 +1,10 @@
-use actix_web::{
-    dev::MessageBody,
-    test::{block_on, run_on},
-    Error, HttpResponse,
-};
+use actix_http::error::PayloadError;
+use actix_web::{dev::MessageBody, HttpResponse};
 use bytes::{Bytes, BytesMut};
-use futures::{future::Future, stream::Stream};
+use futures::{
+    future::ready,
+    stream::{Stream, StreamExt},
+};
 pub use rand::random;
 use rand::{self, distributions::Alphanumeric, Rng};
 use std::{fs::File, io::Read};
@@ -25,19 +25,36 @@ pub fn read_file(file: &str) -> Result<String, failure::Error> {
     Ok(content)
 }
 
-pub fn read_body<B>(mut res: HttpResponse<B>) -> Bytes
+/// Loads bytes from (Request) stream
+pub async fn load_body<S>(stream: S) -> Result<BytesMut, PayloadError>
+where
+    S: Stream<Item = Result<Bytes, PayloadError>>,
+{
+    let body = stream
+        .map(|res| match res {
+            Ok(chunk) => chunk,
+            _ => panic!(),
+        })
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            body.extend_from_slice(&chunk);
+            ready(body)
+        })
+        .await;
+
+    Ok(body)
+}
+
+/// Reads bytes from HttpResponse.
+pub async fn read_body<B>(mut res: HttpResponse<B>) -> Bytes
 where
     B: MessageBody,
 {
-    block_on(run_on(move || {
-        res.take_body()
-            .fold(BytesMut::new(), move |mut body, chunk| {
-                body.extend_from_slice(&chunk);
-                Ok::<_, Error>(body)
-            })
-            .map(|body: BytesMut| body.freeze())
-    }))
-    .unwrap_or_else(|_| panic!("read_response failed at block_on unwrap"))
+    let mut body = res.take_body();
+    let mut bytes = BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&item.unwrap());
+    }
+    bytes.freeze()
 }
 
 #[cfg(test)]
