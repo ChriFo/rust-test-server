@@ -1,5 +1,5 @@
 use actix_http::error::PayloadError;
-use actix_web::{dev::MessageBody, HttpResponse};
+use actix_web::{dev::MessageBody, Error, HttpResponse};
 use bytes::{Bytes, BytesMut};
 use futures::{
     future::ready,
@@ -45,23 +45,28 @@ where
 }
 
 /// Reads bytes from HttpResponse.
-pub async fn read_body<B>(mut res: HttpResponse<B>) -> Bytes
+pub async fn read_body<B>(mut res: HttpResponse<B>) -> Result<Bytes, Error>
 where
     B: MessageBody,
 {
     let mut body = res.take_body();
     let mut bytes = BytesMut::new();
     while let Some(item) = body.next().await {
-        bytes.extend_from_slice(&item.unwrap());
+        bytes.extend_from_slice(&item?);
     }
-    bytes.freeze()
+    Ok(bytes.freeze())
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use spectral::prelude::*;
+    use actix_web::{
+        test::{call_service, init_service, TestRequest},
+        web, App, HttpResponse,
+    };
+    use bytes::Bytes;
+    use futures::{future::ok, stream};
 
     #[test]
     fn random_string_has_given_size() {
@@ -77,7 +82,7 @@ mod tests {
         let first_string = random_string(size as usize);
         let second_string = random_string(size as usize);
 
-        assert_that(&first_string).is_not_equal_to(&second_string);
+        assert!(first_string != second_string);
     }
 
     #[test]
@@ -93,5 +98,31 @@ mod tests {
 
         assert!(content.is_ok());
         assert_eq!(&content.unwrap(), "a1b2c3");
+    }
+
+    #[actix_rt::test]
+    async fn read_request_body() {
+        let content = &random_string(20);
+        let content_bytes = Box::leak(content.clone().into_boxed_str()).as_bytes();
+        let payload = Bytes::from(content_bytes);
+        let stream = stream::once(ok(payload));
+
+        assert_eq!(load_body(stream).await.unwrap(), Bytes::from(content_bytes));
+    }
+
+    #[actix_rt::test]
+    async fn read_response_body() {
+        let payload = random_string(20);
+        let payload_bytes = Bytes::from(payload.clone());
+
+        let mut app = init_service(
+            App::new().default_service(web::to(move || HttpResponse::Ok().body(payload.clone()))),
+        )
+        .await;
+
+        let req = TestRequest::default().to_request();
+        let res = call_service(&mut app, req).await;
+
+        assert_eq!(read_body(res.into()).await.unwrap(), payload_bytes);
     }
 }
