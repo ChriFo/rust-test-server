@@ -1,10 +1,8 @@
 use crate::helper::load_body;
 use crate::requests::{Request, ShareRequest};
-use actix_http::{httpmessage::HttpMessage, Payload};
-use actix_service::{Service, Transform};
 use actix_web::{
-    dev::{ServiceRequest, ServiceResponse},
-    Error,
+    dev::{Payload, Service, ServiceRequest, ServiceResponse, Transform},
+    Error, HttpMessage,
 };
 use futures::{
     future::{ok, FutureExt, LocalBoxFuture, Ready},
@@ -39,7 +37,7 @@ where
 
 pub struct ShareRequestMiddleware<S> {
     service: Rc<RefCell<S>>,
-    tx: crossbeam::channel::Sender<Request>,
+    tx: crossbeam_channel::Sender<Request>,
 }
 
 impl<S, B> Service for ShareRequestMiddleware<S>
@@ -79,7 +77,7 @@ where
 
             Ok(svc.call(req).await?)
         }
-            .boxed_local()
+        .boxed_local()
     }
 }
 
@@ -105,7 +103,7 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_middleware() -> Result<(), Error> {
-        let (tx, rx) = crossbeam::channel::unbounded();
+        let (tx, rx) = crossbeam_channel::unbounded();
 
         let mut app =
             init_service(App::new().wrap(ShareRequest { tx }).default_service(

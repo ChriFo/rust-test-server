@@ -37,8 +37,8 @@ where
     R: Future<Output = U> + 'static,
     U: Responder + 'static,
 {
-    let (tx, rx) = crossbeam::channel::unbounded();
-    let (tx_req, rx_req) = crossbeam::channel::unbounded();
+    let (tx, rx) = crossbeam_channel::unbounded();
+    let (tx_req, rx_req) = crossbeam_channel::unbounded();
 
     let _ = ::std::thread::spawn(move || {
         let sys = actix_rt::System::new("test-server");

@@ -1,5 +1,5 @@
 use actix_web::http::header::HeaderMap;
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender};
 use std::{collections::HashMap, rc::Rc};
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl ShareRequest {
 mod tests {
 
     use super::*;
-    use crossbeam::channel;
+    use crossbeam_channel as channel;
     use std::rc::Rc;
 
     #[test]

@@ -13,7 +13,9 @@ mod middleware;
 mod requests;
 mod server;
 
-pub use actix_http::{error::PayloadError, httpmessage::HttpMessage};
-pub use actix_web::{http::header::HeaderMap, web::Payload, HttpRequest, HttpResponse};
+pub use actix_web::{
+    error::PayloadError, http::header::HeaderMap, web::Payload, HttpMessage, HttpRequest,
+    HttpResponse,
+};
 pub use requests::{Request, RequestReceiver};
 pub use server::{new, TestServer};
