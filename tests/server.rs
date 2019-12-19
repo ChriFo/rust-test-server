@@ -4,7 +4,7 @@ use test_server as server;
 
 #[test]
 fn start_server_at_given_port() -> Result<(), Error> {
-    let server = server::new(65432, HttpResponse::Ok)?;
+    let server = server::new("127.0.0.1:65432", HttpResponse::Ok)?;
 
     assert!(&server.url().contains(":65432"));
 
@@ -19,7 +19,7 @@ fn start_server_at_given_port() -> Result<(), Error> {
 #[cfg(not(target_os = "windows"))] // known issue of Windows
 fn restart_server_at_same_port() -> Result<(), Error> {
     {
-        let server = server::new(65433, HttpResponse::Ok)?;
+        let server = server::new("127.0.0.1:65433", HttpResponse::Ok)?;
         let response = ureq::get(&server.url()).call();
 
         assert!(response.ok());
@@ -28,7 +28,7 @@ fn restart_server_at_same_port() -> Result<(), Error> {
     }
 
     {
-        let server = server::new(65433, HttpResponse::BadRequest)?;
+        let server = server::new("127.0.0.1:65432", HttpResponse::BadRequest)?;
         let response = ureq::get(&server.url()).call();
 
         assert!(response.client_error());
@@ -39,7 +39,7 @@ fn restart_server_at_same_port() -> Result<(), Error> {
 
 #[test]
 fn validate_client_request() -> Result<(), Error> {
-    let server = server::new(0, HttpResponse::Ok)?;
+    let server = server::new("127.0.0.1:0", HttpResponse::Ok)?;
 
     let request_content = helper::random_string(100);
     let _ = ureq::post(&server.url()).send_string(&request_content);
@@ -71,7 +71,9 @@ fn validate_client_request() -> Result<(), Error> {
 
 #[test]
 fn validate_client_response() -> Result<(), Error> {
-    let server = server::new(0, |payload: Payload| HttpResponse::Ok().streaming(payload))?;
+    let server = server::new("127.0.0.1:0", |payload: Payload| {
+        HttpResponse::Ok().streaming(payload)
+    })?;
 
     let request_content = helper::random_string(100);
     let response = ureq::post(&server.url()).send_string(&request_content);
@@ -84,7 +86,7 @@ fn validate_client_response() -> Result<(), Error> {
 
 #[test]
 fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
-    let server = server::new(0, || {
+    let server = server::new("127.0.0.1:0", || {
         let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content)
     })?;
@@ -100,7 +102,7 @@ fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
 
 #[test]
 fn fetch_2nd_request_from_server() -> Result<(), Error> {
-    let server = server::new(0, HttpResponse::Ok)?;
+    let server = server::new("127.0.0.1:0", HttpResponse::Ok)?;
 
     let _ = ureq::get(&server.url()).call();
     let _ = ureq::post(&server.url()).send_string("2");

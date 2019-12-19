@@ -2,7 +2,10 @@ use crate::requests::{RequestReceiver, ShareRequest};
 use actix_web::{dev::Factory, web, App, FromRequest, HttpServer, Responder, Result};
 use failure::{format_err, Error};
 use futures::{executor::block_on, Future};
-use std::{net::SocketAddr, rc::Rc};
+use std::{
+    net::{SocketAddr, ToSocketAddrs},
+    rc::Rc,
+};
 
 pub struct TestServer {
     instance: Rc<actix_web::dev::Server>,
@@ -26,15 +29,16 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new<F, T, R, U>(port: u16, func: F) -> Result<TestServer, Error>
+pub fn new<A, F, T, R, U>(addr: A, func: F) -> Result<TestServer, Error>
 where
+    A: ToSocketAddrs + 'static + Send + Copy,
     F: Factory<T, R, U> + 'static + Send + Copy,
     T: FromRequest + 'static,
     R: Future<Output = U> + 'static,
     U: Responder + 'static,
 {
-    let (tx, rx) = crate::channel::unbounded();
-    let (tx_req, rx_req) = crate::channel::unbounded();
+    let (tx, rx) = crossbeam::channel::unbounded();
+    let (tx_req, rx_req) = crossbeam::channel::unbounded();
 
     let _ = ::std::thread::spawn(move || {
         let sys = actix_rt::System::new("test-server");
@@ -43,7 +47,7 @@ where
                 .wrap(ShareRequest::new(tx_req.clone()))
                 .default_service(web::route().to(func))
         })
-        .bind(SocketAddr::from(([127, 0, 0, 1], port)))
+        .bind(addr)
         .expect("Failed to bind!");
 
         let sockets = server.addrs();

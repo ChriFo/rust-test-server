@@ -19,10 +19,10 @@ use test_server::{HttpRequest, HttpResponse};
 #[test]
 fn example_test() -> Result<(), Error> {
     // start server at random port
-    let _ = test_server::new(0, HttpResponse::Ok)?;
+    let _ = test_server::new("127.0.0.1:0", HttpResponse::Ok)?;
 
     // start server at given port
-    let server = test_server::new(8080, |req: HttpRequest| {
+    let server = test_server::new("127.0.0.1:8080", |req: HttpRequest| {
         println!("Request: {:#?}", req);
         HttpResponse::Ok().body("hello world")
     })?;

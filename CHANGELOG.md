@@ -1,9 +1,10 @@
 # Changelog
 
 ## Unreleased
+* `TestServer::new` first argument is ToSocketAddrs
 * header function exports actix HeaderMap
 * added helper function to read response/request bodies
-* update dependencies
+* update dependencies (including majar actix versions)
 
 ## 0.7.0
 * use actix_web 1.0
@@ -42,8 +43,8 @@
 * update dependencies
 
 ## 0.3.0
-* remove TestServer::received_request()
-* add TestServer::requests() returning all requests in vector
+* remove `TestServer::received_request`
+* add `TestServer::requests` returning all requests in vector
 
 ## 0.2.4
 * upgrade to [actix-web](https://github.com/actix/actix-web) version 0.7.2
