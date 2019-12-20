@@ -1,4 +1,4 @@
-use crate::server::{helper, HttpResponse, Payload, Request};
+use crate::server::{helper, HttpResponse, Payload};
 use failure::Error;
 use test_server as server;
 
@@ -6,7 +6,7 @@ use test_server as server;
 fn start_server_at_given_port() -> Result<(), Error> {
     let server = server::new("127.0.0.1:65432", HttpResponse::Ok)?;
 
-    assert!(&server.url().contains(":65432"));
+    assert!(&server.url().ends_with(":65432"));
 
     let response = ureq::get(&server.url()).call();
 
@@ -46,25 +46,15 @@ fn validate_client_request() -> Result<(), Error> {
 
     assert_eq!(server.requests.len(), 1);
 
-    let request = server.requests.next();
-    assert!(request.is_some());
+    let req = server.requests.next();
+    assert!(req.is_some());
 
-    let Request {
-        ref body,
-        ref headers,
-        ref method,
-        ref path,
-        ref query,
-    } = request.unwrap();
-
-    assert_eq!(&request_content, body);
-    assert_eq!(
-        &String::from("100"),
-        headers.get("content-length").unwrap().to_str()?
-    );
-    assert_eq!("POST", method);
-    assert_eq!("/", path);
-    assert!(query.is_empty());
+    let req = req.unwrap();
+    assert_eq!(request_content.as_bytes(), &req.body()[..]);
+    assert_eq!("100", req.headers().get("content-length").unwrap());
+    assert_eq!("POST", req.method());
+    assert_eq!("/", req.uri().path());
+    assert!(req.uri().query().is_none());
 
     Ok(())
 }
@@ -113,7 +103,7 @@ fn fetch_2nd_request_from_server() -> Result<(), Error> {
     let request = server.requests.next();
 
     assert!(request.is_some());
-    assert_eq!("2", request.unwrap().body);
+    assert_eq!(b"2", &request.unwrap().body()[..]);
 
     Ok(())
 }

@@ -32,10 +32,11 @@ fn example_test() -> Result<(), Error> {
 
     assert_eq!(1, server.requests.len());
 
+    // requests are Request from http crate (which is re-exported as http as well)
     let last_request = server.requests.next().unwrap();
 
-    assert_eq!("GET", last_request.method);
-    assert_eq!("/", last_request.path);
+    assert_eq!("GET", last_request.method());
+    assert_eq!("/", last_request.uri().path());
     // body, headers and query params are also available
 
     Ok(())

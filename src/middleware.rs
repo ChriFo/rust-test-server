@@ -1,5 +1,4 @@
-use crate::helper::load_body;
-use crate::requests::{Request, ShareRequest};
+use crate::{channel::Sender, helper::load_body};
 use actix_web::{
     dev::{Payload, Service, ServiceRequest, ServiceResponse, Transform},
     Error, HttpMessage,
@@ -8,14 +7,14 @@ use futures::{
     future::{ok, FutureExt, LocalBoxFuture, Ready},
     stream,
 };
+use http::{header::HeaderValue, request::Request};
 use std::{
     cell::RefCell,
-    collections::HashMap,
     rc::Rc,
     task::{Context, Poll},
 };
 
-impl<S: 'static, B> Transform<S> for ShareRequest
+impl<S: 'static, B> Transform<S> for Sender
 where
     S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -37,10 +36,10 @@ where
 
 pub struct ShareRequestMiddleware<S> {
     service: Rc<RefCell<S>>,
-    tx: crossbeam_channel::Sender<Request>,
+    tx: crossbeam_channel::Sender<Request<Vec<u8>>>,
 }
 
-impl<S, B> Service for ShareRequestMiddleware<S>
+impl<B, S> Service for ShareRequestMiddleware<S>
 where
     S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
@@ -58,37 +57,31 @@ where
         let mut svc = self.service.clone();
         let tx = self.tx.clone();
 
-        let query = extract_query(req.query_string());
-
-        let method = req.method().to_string();
-        let path = req.path().to_string();
-
         async move {
             let body = load_body(req.take_payload()).await?.freeze();
-            let _ = tx.send(Request {
-                body: String::from_utf8_lossy(&body.to_vec()).to_string(),
-                headers: req.headers().clone(),
-                method,
-                path,
-                query,
-            });
+
+            let mut builder = Request::builder();
+            {
+                if let Some(headers) = builder.headers_mut() {
+                    for (key, value) in req.headers().iter() {
+                        headers.insert(key, HeaderValue::from(value));
+                    }
+                }
+            }
+
+            let request = builder
+                .method(req.method())
+                .uri(req.uri())
+                .body(body.to_vec())
+                .expect("Failed to build request copy!");
+
+            tx.send(request).expect("Failed to send request!");
 
             req.set_payload(Payload::Stream(Box::pin(stream::once(ok(body)))));
 
             Ok(svc.call(req).await?)
         }
         .boxed_local()
-    }
-}
-
-fn extract_query(query: &str) -> HashMap<String, String> {
-    match serde_urlencoded::from_str::<HashMap<String, String>>(query) {
-        Ok(tuples) => tuples,
-        Err(why) => {
-            error!("Failed to extract Query");
-            debug!("{}", why);
-            HashMap::new()
-        }
     }
 }
 
@@ -106,7 +99,7 @@ mod tests {
         let (tx, rx) = crossbeam_channel::unbounded();
 
         let mut app =
-            init_service(App::new().wrap(ShareRequest { tx }).default_service(
+            init_service(App::new().wrap(Sender::new(tx)).default_service(
                 route().to(|payload: Payload| HttpResponse::Ok().streaming(payload)),
             ))
             .await;
@@ -119,7 +112,7 @@ mod tests {
         assert_eq!(read_body(res).await, payload);
 
         assert_eq!(rx.len(), 1);
-        assert_eq!(rx.recv().unwrap().body, payload);
+        assert_eq!(&rx.recv().unwrap().body()[..], payload.as_bytes());
 
         Ok(())
     }

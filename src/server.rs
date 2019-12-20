@@ -1,4 +1,4 @@
-use crate::requests::{RequestReceiver, ShareRequest};
+use crate::channel::{Receiver, Sender};
 use actix_web::{dev::Factory, web, App, FromRequest, HttpServer, Responder, Result};
 use failure::{format_err, Error};
 use futures::{executor::block_on, Future};
@@ -9,7 +9,7 @@ use std::{
 
 pub struct TestServer {
     instance: Rc<actix_web::dev::Server>,
-    pub requests: Rc<RequestReceiver>,
+    pub requests: Rc<Receiver>,
     socket: Rc<SocketAddr>,
 }
 
@@ -29,7 +29,7 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new<A, F, T, R, U>(addr: A, func: F) -> Result<TestServer, Error>
+pub fn new<A, F, R, T, U>(addr: A, func: F) -> Result<TestServer, Error>
 where
     A: ToSocketAddrs + 'static + Send + Copy,
     F: Factory<T, R, U> + 'static + Send + Copy,
@@ -44,14 +44,14 @@ where
         let sys = actix_rt::System::new("test-server");
         let server = HttpServer::new(move || {
             App::new()
-                .wrap(ShareRequest::new(tx_req.clone()))
+                .wrap(Sender::new(tx_req.clone()))
                 .default_service(web::route().to(func))
         })
         .bind(addr)
         .expect("Failed to bind!");
 
         let sockets = server.addrs();
-        let instance = server.shutdown_timeout(1).start();
+        let instance = server.shutdown_timeout(1).run();
         let _ = tx.clone().send((instance, sockets));
 
         sys.run()
@@ -64,7 +64,7 @@ where
 
     Ok(TestServer {
         instance: Rc::new(server),
-        requests: Rc::new(RequestReceiver {
+        requests: Rc::new(Receiver {
             rx: Rc::new(rx_req),
         }),
         socket: Rc::new(*socket),
