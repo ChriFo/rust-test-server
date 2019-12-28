@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 * Copy of Request is based on crate *http*
 * `TestServer::new` first argument is ToSocketAddrs
 * header function exports actix HeaderMap
