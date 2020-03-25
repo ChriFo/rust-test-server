@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+* update dependencies
+
 ## 0.8.0
 * Copy of Request is based on crate *http*
 * `TestServer::new` first argument is ToSocketAddrs
