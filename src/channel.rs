@@ -2,7 +2,6 @@ use crossbeam_channel as crossbeam;
 use http::request::Request;
 use std::rc::Rc;
 
-#[derive(Debug)]
 pub struct Receiver {
     pub rx: Rc<crossbeam::Receiver<Request<Vec<u8>>>>,
 }

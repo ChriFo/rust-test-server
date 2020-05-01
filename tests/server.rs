@@ -16,7 +16,7 @@ fn start_server_at_given_port() -> Result<(), Error> {
 }
 
 #[test]
-#[cfg(not(target_os = "windows"))] // known issue of Windows
+#[ignore]
 fn restart_server_at_same_port() -> Result<(), Error> {
     {
         let server = server::new("127.0.0.1:65433", HttpResponse::Ok)?;

@@ -106,13 +106,21 @@ mod tests {
 
         let payload = "hello world";
 
-        let req = TestRequest::default().set_payload(payload).to_request();
+        let req = TestRequest::with_header("content-type", "text/plain")
+            .set_payload(payload)
+            .to_request();
         let res = call_service(&mut app, req).await;
 
         assert_eq!(read_body(res).await, payload);
 
         assert_eq!(rx.len(), 1);
-        assert_eq!(&rx.recv().unwrap().body()[..], payload.as_bytes());
+
+        let recv_req = rx.recv().unwrap();
+        assert_eq!(&recv_req.body()[..], payload.as_bytes());
+        assert_eq!(
+            recv_req.headers().get("content-type").unwrap(),
+            "text/plain"
+        );
 
         Ok(())
     }

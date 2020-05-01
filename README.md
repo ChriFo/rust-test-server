@@ -1,6 +1,6 @@
 # (Integration) Test server
 
-[![Build Status](https://github.com/ChriFo/test-server-rs/workflows/Continuous%20Integration/badge.svg)](https://github.com/ChriFo/test-server-rs/actions)
+[![Build Status](https://github.com/ChriFo/test-server-rs/workflows/Test/badge.svg)](https://github.com/ChriFo/test-server-rs/actions)
 [![codecov](https://codecov.io/gh/ChriFo/test-server-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/ChriFo/test-server-rs)
 
 ## Usage
