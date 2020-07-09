@@ -15,6 +15,7 @@ fn start_server_at_given_port() -> Result<(), Error> {
     Ok(())
 }
 
+// thread '<unnamed>' panicked at 'Failed to bind!: Os { code: 98, kind: AddrInUse, message: "Address already in use" }',
 #[test]
 #[ignore]
 fn restart_server_at_same_port() -> Result<(), Error> {

@@ -52,7 +52,7 @@ where
 
         let sockets = server.addrs();
         let instance = server.shutdown_timeout(1).run();
-        let _ = tx.clone().send((instance, sockets));
+        let _ = tx.send((instance, sockets));
 
         sys.run()
     });
