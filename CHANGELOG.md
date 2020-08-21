@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0
 
 * Replace `failure` with `anyhow`
 * update dependencies
