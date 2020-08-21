@@ -1,6 +1,5 @@
 use crate::channel::{Receiver, Sender};
 use actix_web::{dev::Factory, web, App, FromRequest, HttpServer, Responder, Result};
-use failure::{format_err, Error};
 use futures::{executor::block_on, Future};
 use std::{
     net::{SocketAddr, ToSocketAddrs},
@@ -29,7 +28,7 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new<A, F, R, T, U>(addr: A, func: F) -> Result<TestServer, Error>
+pub fn new<A, F, R, T, U>(addr: A, func: F) -> Result<TestServer, anyhow::Error>
 where
     A: ToSocketAddrs + 'static + Send + Copy,
     F: Factory<T, R, U> + 'static + Send + Copy,
@@ -60,7 +59,7 @@ where
     let (server, sockets) = rx.recv()?;
     let socket = sockets
         .get(0)
-        .ok_or_else(|| format_err!("Failed to get socket addr!"))?;
+        .ok_or_else(|| anyhow::anyhow!("Failed to get socket addr!"))?;
 
     Ok(TestServer {
         instance: Rc::new(server),

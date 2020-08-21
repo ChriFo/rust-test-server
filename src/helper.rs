@@ -17,7 +17,7 @@ pub fn random_string(size: usize) -> String {
 }
 
 /// Reads file content into string result.
-pub fn read_file(file: &str) -> Result<String, failure::Error> {
+pub fn read_file(file: &str) -> Result<String, anyhow::Error> {
     let mut file = File::open(file)?;
     let mut content = String::new();
     let _ = file.read_to_string(&mut content);

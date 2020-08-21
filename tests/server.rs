@@ -1,9 +1,8 @@
 use crate::server::{helper, HttpResponse, Payload};
-use failure::Error;
 use test_server as server;
 
 #[test]
-fn start_server_at_given_port() -> Result<(), Error> {
+fn start_server_at_given_port() -> Result<(), anyhow::Error> {
     let server = server::new("127.0.0.1:65432", HttpResponse::Ok)?;
 
     assert!(&server.url().ends_with(":65432"));
@@ -18,7 +17,7 @@ fn start_server_at_given_port() -> Result<(), Error> {
 // thread '<unnamed>' panicked at 'Failed to bind!: Os { code: 98, kind: AddrInUse, message: "Address already in use" }',
 #[test]
 #[ignore]
-fn restart_server_at_same_port() -> Result<(), Error> {
+fn restart_server_at_same_port() -> Result<(), anyhow::Error> {
     {
         let server = server::new("127.0.0.1:65433", HttpResponse::Ok)?;
         let response = ureq::get(&server.url()).call();
@@ -39,7 +38,7 @@ fn restart_server_at_same_port() -> Result<(), Error> {
 }
 
 #[test]
-fn validate_client_request() -> Result<(), Error> {
+fn validate_client_request() -> Result<(), anyhow::Error> {
     let server = server::new("127.0.0.1:0", HttpResponse::Ok)?;
 
     let request_content = helper::random_string(100);
@@ -61,7 +60,7 @@ fn validate_client_request() -> Result<(), Error> {
 }
 
 #[test]
-fn validate_client_response() -> Result<(), Error> {
+fn validate_client_response() -> Result<(), anyhow::Error> {
     let server = server::new("127.0.0.1:0", |payload: Payload| {
         HttpResponse::Ok().streaming(payload)
     })?;
@@ -76,7 +75,7 @@ fn validate_client_response() -> Result<(), Error> {
 }
 
 #[test]
-fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
+fn not_necessary_to_fetch_request_from_server() -> Result<(), anyhow::Error> {
     let server = server::new("127.0.0.1:0", || {
         let content = helper::read_file("tests/sample.json").unwrap();
         HttpResponse::Ok().body(content)
@@ -92,7 +91,7 @@ fn not_necessary_to_fetch_request_from_server() -> Result<(), Error> {
 }
 
 #[test]
-fn fetch_2nd_request_from_server() -> Result<(), Error> {
+fn fetch_2nd_request_from_server() -> Result<(), anyhow::Error> {
     let server = server::new("127.0.0.1:0", HttpResponse::Ok)?;
 
     let _ = ureq::get(&server.url()).call();
