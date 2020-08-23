@@ -6,6 +6,7 @@ license = "MIT"
 repository = "https://github.com/ChriFo/test-server-rs"
 publish = false
 edition = "2018"
+build = "build.rs"
 
 [dependencies]
 actix-rt = "1.1.1"
@@ -17,5 +18,9 @@ futures = "0.3.5"
 http = "0.2.1"
 rand = "0.7.3"
 
+[build-dependencies]
+skeptic = "0.13.4"
+
 [dev-dependencies]
+skeptic = "0.13.4"
 ureq = { version = "1.4.0", default-features = false }
