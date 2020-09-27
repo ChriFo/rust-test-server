@@ -46,7 +46,7 @@ where
 /// Reads bytes from HttpResponse.
 pub async fn read_body<B>(mut res: HttpResponse<B>) -> Result<Bytes, Error>
 where
-    B: MessageBody,
+    B: MessageBody + Unpin,
 {
     let mut body = res.take_body();
     let mut bytes = BytesMut::new();
