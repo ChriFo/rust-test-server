@@ -4,26 +4,26 @@ use actix_web::{
     Error, HttpMessage,
 };
 use futures::{
-    future::{ok, FutureExt, LocalBoxFuture, Ready},
+    future::{ok, Future, Ready},
     stream,
 };
 use http::{header::HeaderValue, request::Request};
 use std::{
     cell::RefCell,
+    pin::Pin,
     rc::Rc,
     task::{Context, Poll},
 };
 
-impl<S: 'static, B> Transform<S> for Sender
+impl<S, B> Transform<S, ServiceRequest> for Sender
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type InitError = ();
     type Transform = ShareRequestMiddleware<S>;
+    type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
@@ -39,25 +39,26 @@ pub struct ShareRequestMiddleware<S> {
     tx: crossbeam_channel::Sender<Request<Vec<u8>>>,
 }
 
-impl<B, S> Service for ShareRequestMiddleware<S>
+impl<S, B> Service<ServiceRequest> for ShareRequestMiddleware<S>
 where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
 {
-    type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    #[allow(clippy::all)]
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+
+    fn poll_ready(&self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx)
     }
 
-    fn call(&mut self, mut req: ServiceRequest) -> Self::Future {
-        let mut svc = self.service.clone();
+    fn call(&self, mut req: ServiceRequest) -> Self::Future {
+        let svc = self.service.clone();
         let tx = self.tx.clone();
 
-        async move {
+        Box::pin(async move {
             let body = load_body(req.take_payload()).await?.freeze();
 
             let mut builder = Request::builder();
@@ -80,8 +81,7 @@ where
             req.set_payload(Payload::Stream(Box::pin(stream::once(ok(body)))));
 
             Ok(svc.call(req).await?)
-        }
-        .boxed_local()
+        })
     }
 }
 
@@ -89,6 +89,7 @@ where
 mod tests {
     use super::*;
     use actix_web::{
+        rt as actix_rt,
         test::{call_service, init_service, read_body, TestRequest},
         web::{route, Payload},
         App, HttpResponse,
@@ -98,7 +99,7 @@ mod tests {
     async fn test_middleware() -> Result<(), Error> {
         let (tx, rx) = crossbeam_channel::unbounded();
 
-        let mut app =
+        let app =
             init_service(App::new().wrap(Sender::new(tx)).default_service(
                 route().to(|payload: Payload| HttpResponse::Ok().streaming(payload)),
             ))
@@ -106,10 +107,11 @@ mod tests {
 
         let payload = "hello world";
 
-        let req = TestRequest::with_header("content-type", "text/plain")
+        let req = TestRequest::default()
+            .insert_header(("content-type", "text/plain"))
             .set_payload(payload)
             .to_request();
-        let res = call_service(&mut app, req).await;
+        let res = call_service(&app, req).await;
 
         assert_eq!(read_body(res).await, payload);
 

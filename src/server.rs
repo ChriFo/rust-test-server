@@ -1,5 +1,5 @@
 use crate::channel::{Receiver, Sender};
-use actix_web::{dev::Factory, web, App, FromRequest, HttpServer, Responder, Result};
+use actix_web::{dev::Handler, rt::System, web, App, FromRequest, HttpServer, Responder, Result};
 use futures::{executor::block_on, Future};
 use std::{
     net::{SocketAddr, ToSocketAddrs},
@@ -28,38 +28,41 @@ impl Drop for TestServer {
     }
 }
 
-pub fn new<A, F, R, T, U>(addr: A, func: F) -> Result<TestServer, anyhow::Error>
+pub fn new<A, F, I, R>(addr: A, func: F) -> Result<TestServer>
 where
     A: ToSocketAddrs + 'static + Send + Copy,
-    F: Factory<T, R, U> + 'static + Send + Copy,
-    T: FromRequest + 'static,
-    R: Future<Output = U> + 'static,
-    U: Responder + 'static,
+    F: Handler<I, R> + 'static + Send + Copy,
+    I: FromRequest + 'static,
+    R: Future + 'static,
+    R::Output: Responder + 'static,
 {
     let (tx, rx) = crossbeam_channel::unbounded();
     let (tx_req, rx_req) = crossbeam_channel::unbounded();
 
     let _ = ::std::thread::spawn(move || {
-        let sys = actix_rt::System::new("test-server");
-        let server = HttpServer::new(move || {
-            App::new()
-                .wrap(Sender::new(tx_req.clone()))
-                .default_service(web::route().to(func))
-        })
-        .bind(addr)
-        .expect("Failed to bind!");
+        let sys = System::new();
 
-        let sockets = server.addrs();
-        let instance = server.shutdown_timeout(1).run();
-        let _ = tx.send((instance, sockets));
+        sys.block_on(async {
+            let server = HttpServer::new(move || {
+                App::new()
+                    .wrap(Sender::new(tx_req.clone()))
+                    .default_service(web::route().to(func))
+            })
+            .bind(addr)
+            .expect("Failed to bind!");
+
+            let sockets = server.addrs();
+            let instance = server.shutdown_timeout(1).run();
+            let _ = tx.send((instance, sockets));
+        });
 
         sys.run()
     });
 
-    let (server, sockets) = rx.recv()?;
+    let (server, sockets) = rx.recv().map_err(|e| log::error!("{}", e))?;
     let socket = sockets
         .get(0)
-        .ok_or_else(|| anyhow::anyhow!("Failed to get socket addr!"))?;
+        .ok_or(log::error!("Failed to get socket addr!"))?;
 
     Ok(TestServer {
         instance: Rc::new(server),
